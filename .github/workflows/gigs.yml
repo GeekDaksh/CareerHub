@@ -1,0 +1,41 @@
+name: Gig radar
+# 4 times a day (08:15, 14:15, 20:15, 02:15 IST). The 08:15 run also sends the morning email.
+on:
+  schedule:
+    - cron: "45 2,8,14,20 * * *"
+  workflow_dispatch:
+concurrency:
+  group: gig-radar
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATA_DIR: data
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      DIGEST_TO: ${{ secrets.DIGEST_TO }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Make sure the web app exists
+        run: python deploy/deploy_space.py --ensure
+      - run: python -m common.hfstore pull
+      - name: Find gigs
+        run: python -m gigs.radar
+      - name: Morning email
+        run: python -m notify.digest
+        continue-on-error: true
+      - name: Save
+        if: always()
+        run: python -m common.hfstore push gigs

@@ -1,0 +1,25 @@
+name: Deploy app
+# Runs when the app or settings change, or by hand. Creates the private HF Space + dataset if missing.
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", "config.py", "deploy/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install "huggingface_hub>=0.30"
+      - run: python deploy/deploy_space.py
