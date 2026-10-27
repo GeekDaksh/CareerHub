@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Career Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#1d1d1d;--s1:#252524;--s2:#302f2d;--line:#383734;--line2:#4a4844;
+  --paper:#e8e6e1;--dim:#a39f98;--faint:#7a766f;
+  --pink:#f3a6c2;--peach:#f6b98b;--cream:#fbe8c7;--sky:#a3d4f1;
+  --A:#9fe0b5;--B:#acd0f6;--C:#f4cf7c;--D:#f49f92;
+  --f:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg)}
+body{color:var(--paper);font:15px/1.5 var(--f);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--cream);outline-offset:2px}
+h1,h2,h3,h4{margin:0;font-weight:500}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 40px}
+.dim{color:var(--dim)}.faint{color:var(--faint)}.small{font-size:13px}.mono{font-family:var(--mono);font-size:12px;letter-spacing:.02em}
+.tA{color:var(--A)}.tB{color:var(--B)}.tC{color:var(--C)}.tD{color:var(--D)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Header */
+.top{display:flex;align-items:center;gap:12px 14px;flex-wrap:wrap;padding:4px 0 18px}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.logo{font-size:22px;font-weight:600;font-stretch:125%;letter-spacing:-.01em}
+.logo i{font-style:normal;background:linear-gradient(90deg,var(--cream),var(--peach),var(--pink),var(--sky));-webkit-background-clip:text;background-clip:text;color:transparent}
+.switch{display:flex;padding:4px;border-radius:999px;background:var(--s1);border:1px solid var(--line)}
+.switch button{border:0;background:none;color:var(--dim);padding:7px 16px;border-radius:999px;font-weight:600}
+.switch button[aria-selected="true"]{background:linear-gradient(90deg,var(--cream),var(--peach));color:#1d1d1d}
+.tabs{display:flex;gap:2px;padding:4px;border:1px solid var(--line);border-radius:999px;overflow-x:auto;max-width:100%}
+.tabs button{background:none;border:0;color:var(--dim);padding:7px 14px;border-radius:999px;white-space:nowrap}
+.tabs button:hover{color:var(--paper)}
+.tabs button[aria-selected="true"]{background:var(--paper);color:var(--bg);font-weight:600}
+.tools{display:flex;gap:6px}
+
+/* Buttons */
+.ghost{background:none;border:1px solid var(--line2);border-radius:999px;padding:7px 14px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.ghost:hover:not(:disabled){border-color:var(--paper)}
+.ghost.on{border-color:var(--paper);background:var(--s2)}
+.primary{background:var(--paper);color:var(--bg);border:0;border-radius:999px;padding:9px 18px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.primary:hover{background:#fff}
+.mini{background:none;border:1px solid var(--line2);border-radius:999px;padding:4px 11px;font-size:13px;color:var(--dim);text-decoration:none}
+.mini:hover{border-color:var(--paper);color:var(--paper)}
+.mini.on{background:var(--s2);color:var(--paper);border-color:var(--cream);font-weight:600}
+.dotlive::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--A);margin-right:2px;box-shadow:0 0 0 3px rgba(159,224,181,.15)}
+.dotlive.bad::before{background:var(--D);box-shadow:0 0 0 3px rgba(244,159,146,.15)}
+
+/* Stage */
+.stage{position:relative;overflow:hidden;overflow:clip;background:var(--s1);border:1px solid var(--line);border-radius:28px;padding:clamp(24px,5vw,52px)}
+.orb{position:absolute;z-index:0;width:540px;height:540px;right:-150px;top:-190px;border-radius:50%;
+  background:radial-gradient(circle at 36% 32%,var(--cream) 0%,var(--peach) 28%,var(--pink) 56%,rgba(163,212,241,.85) 80%,rgba(163,212,241,0) 100%);
+  filter:blur(4px);opacity:.9;animation:drift 20s ease-in-out infinite alternate;pointer-events:none}
+.orb.fl{background:radial-gradient(circle at 36% 32%,var(--cream) 0%,var(--A) 30%,var(--sky) 62%,rgba(243,166,194,.8) 82%,rgba(243,166,194,0) 100%)}
+@keyframes drift{to{transform:translate(-36px,28px) scale(1.05)}}
+.stage>*:not(.orb){position:relative;z-index:1}
+.stage .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.stage h1{font-size:clamp(42px,7vw,92px);font-weight:400;font-stretch:125%;line-height:.95;letter-spacing:-.03em;margin-top:10px}
+.lede{max-width:56ch;color:var(--dim);font-size:17px;margin:16px 0 22px}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:26px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.kpi{padding:18px 18px 18px 0}
+.kpi+.kpi{padding-left:20px;border-left:1px solid var(--line)}
+.kpi .k{display:block;color:var(--dim);font-size:13px}
+.kpi b{display:block;font-size:44px;font-weight:400;font-stretch:125%;line-height:1.1;margin:6px 0 4px}
+.kpi p{margin:6px 0 0;color:var(--dim);font-size:13px;max-width:32ch}
+.split{display:flex;height:6px;border-radius:99px;overflow:hidden;background:var(--line);margin-top:10px;max-width:220px}
+.split i{display:block;height:100%;background:linear-gradient(90deg,var(--peach),var(--pink))}
+
+/* Board + cards */
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.board.b4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.col{background:var(--s1);border:1px solid var(--line);border-radius:18px;padding:14px;min-height:200px}
+.col>header{display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px 4px}
+.col h3{font-size:16px;font-weight:600}
+.count{color:var(--dim);font-size:13px}
+.empty{color:var(--faint);font-size:14px;padding:18px 6px;margin:0}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px;display:flex;flex-direction:column}
+.grid2 .card{margin-top:0;background:var(--s1)}
+.card.fresh{border-color:var(--peach)}
+.card-top{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--dim)}
+.card h4{font-size:16px;font-weight:500;line-height:1.35;margin:6px 0 8px}
+.card h4 a{text-decoration:none}.card h4 a:hover{text-decoration:underline;text-underline-offset:3px}
+.card .sum{color:var(--dim);font-size:14px;margin:0 0 8px}
+.meta{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+.tag{padding:2px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--dim);white-space:nowrap}
+.tag.who{color:var(--paper);background:var(--s2);border-color:var(--s2)}
+.tag.bA{color:var(--A);border-color:rgba(159,224,181,.4)}.tag.bB{color:var(--B);border-color:rgba(172,208,246,.4)}
+.tag.bC{color:var(--C);border-color:rgba(244,207,124,.45)}.tag.bD{color:var(--D);border-color:rgba(244,159,146,.5)}
+.flag{display:flex;align-items:baseline;gap:8px;font-size:13px;margin:8px 0 0}
+.flag::before{transform:translateY(-1px)}
+.flag::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.flag.ok{color:var(--A)}.flag.warn{color:var(--C)}.flag.bad{color:var(--D)}
+.card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:12px;flex-wrap:wrap}
+.score{display:inline-block;padding:3px 10px;border-radius:999px;color:#1d1d1d;font-weight:700;font-size:13px;white-space:nowrap}
+.gA{background:var(--A)}.gB{background:var(--B)}.gC{background:var(--C)}.gD{background:var(--D)}.g-{background:var(--s2);color:var(--dim)}
+
+/* Pages */
+.page-head{margin:8px 0 18px}
+.page-head h2{font-size:clamp(30px,4.4vw,48px);font-stretch:125%;font-weight:400;letter-spacing:-.02em;line-height:1}
+.page-head p{color:var(--dim);margin:10px 0 0;max-width:72ch}
+.bar-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:30px 0 12px}
+.bar-head h3{font-size:20px;font-stretch:125%;font-weight:400}
+.filters{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--s1);margin-bottom:14px}
+.frow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.frow>.lab{color:var(--faint);font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;min-width:86px}
+.search{flex:1;min-width:200px;background:var(--bg);border:1px solid var(--line2);border-radius:999px;padding:8px 14px}
+select.sel{background:var(--bg);border:1px solid var(--line2);border-radius:999px;padding:6px 12px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:16px}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+th{color:var(--dim);font-weight:500;font-size:13px;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}tbody tr.click:hover{background:var(--s1)}
+.steps{list-style:none;counter-reset:s;padding:0;margin:0;max-width:820px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:52px 1fr;gap:4px 14px;padding:16px 0;border-top:1px solid var(--line)}
+.steps li::before{content:counter(s);font-stretch:125%;font-size:30px;line-height:1;color:var(--peach);grid-row:span 2}
+.steps b{font-size:17px;font-weight:600}
+.steps p{margin:0;color:var(--dim)}
+.linkset{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.bars{display:flex;align-items:flex-end;gap:10px;height:170px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--s1)}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;font-size:12px;color:var(--dim)}
+.bars i{display:block;width:100%;max-width:46px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--peach),var(--pink))}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--dim)}
+.field input{background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:9px 12px}
+.formrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+.lock{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;border:1px dashed var(--line2);color:var(--cream)}
+.note{padding:14px 16px;border-radius:12px;background:rgba(244,207,124,.07);border:1px solid rgba(244,207,124,.3);color:var(--paper);font-size:14px}
+.note.good{background:rgba(159,224,181,.07);border-color:rgba(159,224,181,.3)}
+pre.copy{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px;font:14px/1.6 var(--f);margin:8px 0}
+
+/* Dialog + toast + footer */
+dialog{background:var(--s1);color:var(--paper);border:1px solid var(--line2);border-radius:22px;padding:24px;width:min(720px,calc(100vw - 24px));max-height:calc(100vh - 32px)}
+dialog::backdrop{background:rgba(10,10,10,.72)}
+dialog h2{font-size:26px;font-stretch:125%;font-weight:400;letter-spacing:-.01em}
+dialog h3{font-size:15px;font-weight:600;margin:20px 0 8px}
+dialog .sub{color:var(--dim);margin:6px 0 14px}
+.x{float:right;background:none;border:1px solid var(--line2);border-radius:999px;width:34px;height:34px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,160%);visibility:hidden;background:var(--paper);color:var(--bg);border-radius:999px;padding:9px 18px;box-shadow:0 12px 32px rgba(0,0,0,.45);transition:transform .25s ease,visibility .25s;max-width:calc(100vw - 24px);z-index:20;font-size:14px}
+.toast.show{transform:translate(-50%,0);visibility:visible}
+.toast.bad{background:var(--D)}
+.foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--faint);font-size:13px}
+.loading{padding:80px 0;text-align:center;color:var(--dim)}
+
+@media (max-width:900px){
+  .board,.board.b4,.grid2{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi:nth-child(3){border-left:0;padding-left:0}
+  .kpi:nth-child(n+3){border-top:1px solid var(--line)}
+  .tabs{order:4;width:100%}
+  .switch{order:3}
+  .orb{width:360px;height:360px;right:-170px;top:-150px}
+  .tabs button{padding:6px 10px;font-size:14px}
+  .toast{left:12px;right:12px;transform:translateY(160%);border-radius:16px}
+  .toast.show{transform:none}
+  .kpi b{font-size:34px}
+  .frow>.lab{min-width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="logo">Career <i>Hub</i></span><span class="dim small" id="who"></span></div>
+    <div class="switch" role="tablist" aria-label="Workspace">
+      <button data-ws="career" aria-selected="true">Career</button>
+      <button data-ws="freelance" aria-selected="false">Freelance</button>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+    <div class="tools">
+      <button class="ghost" data-go="safety">Safety</button>
+      <button class="ghost" data-go="settings">Settings</button>
+      <button class="ghost dotlive" id="statusBtn" data-go="status">Status</button>
+    </div>
+  </header>
+  <main id="view"><div class="loading">Loading your hub…</div></main>
+  <footer class="foot"><span id="upd"></span><span>Fresher / entry-level only · scams filtered · private to you</span></footer>
+</div>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+let D = null;
+const S = {ws: "career", tab: "today", f: {}};
+const TABS = {
+  career: [["today", "Today"], ["jobs", "Jobs"], ["apps", "Applications"], ["companies", "Companies"], ["sites", "Job sites"]],
+  freelance: [["today", "Today"], ["gigs", "Gigs"], ["ai", "AI tasks"], ["pipe", "Pipeline"], ["earn", "Earnings"], ["kit", "Toolkit"]],
+};
+const PAGES = ["settings", "safety", "status"];
+
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const safeUrl = (u) => /^https?:\/\//i.test(String(u || "")) ? esc(u) : "#";
+const inr = (v) => (v || v === 0) ? "₹" + Math.round(v).toLocaleString("en-IN") : "—";
+function ago(ts) {
+  if (!ts) return "";
+  const h = Math.max(0, (Date.now() / 1000 - ts) / 3600);
+  return h < 1 ? Math.round(h * 60) + " min ago" : h < 48 ? Math.round(h) + " h ago" : Math.round(h / 24) + " days ago";
+}
+const store = {get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+               set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
+function toast(msg, bad) { const t = $("#toast"); t.textContent = msg; t.className = "toast show" + (bad ? " bad" : ""); clearTimeout(t._t); t._t = setTimeout(() => t.className = "toast", 2600); }
+async function post(path, body) {
+  const r = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+const T = () => D.tracker.items || {};
+const st = (key, d = "") => (T()[key] || {}).status || d;
+async function track(key, status, meta) {
+  try {
+    const r = await post("/api/track", {key, status, meta});
+    D.tracker.items[key] = r.item; render(); toast(status ? "Saved: " + status : "Cleared");
+  } catch (e) { toast("Couldn't save — try again", true); }
+}
+const verdictTag = (v) => ({verified: '<span class="tag bA">✓ Verified source</span>', likely: '<span class="tag bB">Likely real</span>',
+  unverified: '<span class="tag bC">Unverified — check</span>'}[v] || "");
+const gradeCls = (g) => g ? "g" + String(g)[0] : "g-";
+const scoreCls = (s) => s >= 70 ? "gA" : s >= 50 ? "gB" : s >= 35 ? "gC" : "gD";
+const chips = (list, sel, group) => list.map((x) => `<button class="mini ${sel.includes(x) ? "on" : ""}" data-chip="${esc(group)}" data-v="${esc(x)}">${esc(x)}</button>`).join("");
+function toggleChip(group, v, all) {
+  const cur = S.f[group] || all.slice();
+  S.f[group] = cur.includes(v) ? cur.filter((x) => x !== v) : cur.concat(v);
+  store.set("f", S.f); render();
+}
+const fsel = (group, all) => S.f[group] && S.f[group].length ? S.f[group] : all;
+
+/* ---------- router ---------- */
+function go(ws, tab) { S.ws = ws; S.tab = tab; location.hash = ws + "/" + tab; render(); window.scrollTo({top: 0}); }
+function readHash() {
+  const [ws, tab] = (location.hash.slice(1) || "career/today").split("/");
+  if (PAGES.includes(ws)) { S.ws = ws; S.tab = ws; return; }
+  S.ws = TABS[ws] ? ws : "career"; S.tab = (TABS[S.ws].find((t) => t[0] === tab) || TABS[S.ws][0])[0];
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-ws],[data-tab],[data-go],[data-chip],[data-act]");
+  if (!b) return;
+  if (b.dataset.ws) go(b.dataset.ws, "today");
+  else if (b.dataset.tab) go(S.ws, b.dataset.tab);
+  else if (b.dataset.go) { S.ws = b.dataset.go; S.tab = b.dataset.go; location.hash = b.dataset.go; render(); }
+  else if (b.dataset.chip) toggleChip(b.dataset.chip, b.dataset.v, JSON.parse(b.closest("[data-all]")?.dataset.all || "[]"));
+  else if (b.dataset.act) ACT[b.dataset.act](b.dataset, b);
+});
+window.addEventListener("hashchange", () => { readHash(); render(); });
+
+/* ---------- data views ---------- */
+const openRoles = () => D.roles.filter((r) => !["hidden", "applied", "interview", "offer", "rejected"].includes(st("role:" + r.id)));
+const openGigs = () => D.gigs.filter((g) => !["hidden", "bid", "won", "done", "paid", "lost"].includes(st("gig:" + g.id)));
+const roleMeta = (r) => ({title: r.title, company: r.company || "", url: r.url, platform: r.platform || "", location: r.location || ""});
+const gigMeta = (g) => ({title: g.title, company: g.company || "", url: g.url, platform: g.source, location: ""});
+const byId = (arr, id) => arr.find((x) => x.id === id);
+const weekAgo = () => new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 16);
+const countStatus = (prefix, statuses, since) => Object.entries(T()).filter(([k, v]) => k.startsWith(prefix) && statuses.includes(v.status) && (!since || (v.updated || "") >= since)).length;
+const monthEarned = () => { const m = new Date().toISOString().slice(0, 7); return (D.tracker.earnings || []).filter((e) => String(e.date).startsWith(m)).reduce((a, e) => a + Number(e.amount_inr || 0), 0); };
+
+function roleCard(r, compact) {
+  const fresh = Date.now() / 1000 - (r.first_seen || 0) < 86400;
+  const s = st("role:" + r.id);
+  const lvl = r.level === "entry" ? '<span class="tag bA">Entry / intern</span>' : '<span class="tag bC">Level not stated — check</span>';
+  return `<article class="card ${fresh ? "fresh" : ""}">
+    <div class="card-top"><span>${esc(r.company || "Company")} · ${esc(r.platform || "")}</span>${verdictTag(r.trust?.verdict)}</div>
+    <h4><a href="${safeUrl(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a></h4>
+    <div class="meta">${r.location ? `<span class="tag who">${esc(r.location)}</span>` : ""}${lvl}
+      ${(r.roles || []).slice(0, 2).map((x) => `<span class="tag">${esc(x)}</span>`).join("")}
+      ${(r.sectors || []).slice(0, 2).map((x) => `<span class="tag bB">${esc(x)}</span>`).join("")}
+      ${r.location_ok === false ? '<span class="tag bD">outside your locations</span>' : ""}
+      <span class="tag">${esc(ago(r.posted || r.first_seen))}</span></div>
+    ${compact ? "" : (r.trust?.good || []).map((x) => `<p class="flag ok">${esc(x)}</p>`).join("") + (r.trust?.warn || []).map((x) => `<p class="flag warn">${esc(x)}</p>`).join("")}
+    ${r.referral && !compact ? `<p class="flag ok">Referral contact: ${esc(r.referral.name)} (${esc(r.referral.role || "")})</p>` : ""}
+    <div class="card-foot"><span class="score ${scoreCls(r.score)}">${r.score}</span>
+      <span class="row">
+        <a class="primary" href="${safeUrl(r.url)}" target="_blank" rel="noopener noreferrer">Apply ↗</a>
+        <button class="mini" data-act="howto" data-id="${esc(r.id)}">How to apply</button>
+        <button class="mini ${s === "saved" ? "on" : ""}" data-act="role" data-id="${esc(r.id)}" data-s="saved">Save</button>
+        <button class="mini" data-act="role" data-id="${esc(r.id)}" data-s="applied">Applied</button>
+        <button class="mini" data-act="role" data-id="${esc(r.id)}" data-s="hidden" title="Hide">✕</button>
+      </span></div></article>`;
+}
+
+function gigCard(g, compact) {
+  const fresh = Date.now() / 1000 - (g.first_seen || 0) < 86400;
+  const s = st("gig:" + g.id);
+  const pay = g.pay_inr ? `~${inr(g.pay_inr)}${g.pay_type === "hourly" ? "/hr" : g.pay_type === "fixed" ? " fixed" : ""}` : "";
+  return `<article class="card ${fresh ? "fresh" : ""}">
+    <div class="card-top"><span>${esc(g.source)}${g.company ? " · " + esc(g.company) : ""}</span>${verdictTag(g.trust?.verdict)}</div>
+    <h4><a href="${safeUrl(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.title)}</a></h4>
+    ${compact ? "" : `<p class="sum">${esc(g.ai?.summary || g.desc || "")}</p>`}
+    <div class="meta"><span class="tag who">${esc(D.catalog.gig_types[g.category] || g.category)}</span>
+      ${pay ? `<span class="tag bA">${esc(pay)}</span>` : ""}
+      ${Number.isFinite(g.bids) ? `<span class="tag">${g.bids} bids</span>` : ""}
+      ${g.work_type && g.work_type !== "unknown" ? `<span class="tag">${esc(g.work_type)}</span>` : ""}
+      ${g.eligibility === "check" ? '<span class="tag bC">check location</span>' : ""}
+      ${g.ai?.est_hours ? `<span class="tag">~${esc(g.ai.est_hours)} h</span>` : ""}
+      <span class="tag">${esc(ago(g.posted || g.first_seen))}</span></div>
+    ${compact ? "" : `<p class="flag ok">${esc((g.why || []).join(" · "))}</p>`}
+    ${(g.ai?.red_flags || []).map((x) => `<p class="flag warn">${esc(x)}</p>`).join("")}
+    <div class="card-foot"><span class="score ${scoreCls(g.score)}">${g.score}</span>
+      <span class="row">
+        <a class="primary" href="${safeUrl(g.url)}" target="_blank" rel="noopener noreferrer">Open ↗</a>
+        ${g.ai?.proposal ? `<button class="mini" data-act="proposal" data-id="${esc(g.id)}">Proposal</button>` : ""}
+        <button class="mini ${s === "saved" ? "on" : ""}" data-act="gig" data-id="${esc(g.id)}" data-s="saved">Save</button>
+        <button class="mini" data-act="gig" data-id="${esc(g.id)}" data-s="bid">Bid sent</button>
+        <button class="mini" data-act="gig" data-id="${esc(g.id)}" data-s="hidden" title="Hide">✕</button>
+      </span></div></article>`;
+}
+
+/* ---------- actions ---------- */
+const ACT = {
+  role: (d) => { const r = byId(D.roles, d.id); track("role:" + d.id, st("role:" + d.id) === d.s ? "" : d.s, r ? roleMeta(r) : undefined); },
+  gig: (d) => { const g = byId(D.gigs, d.id); track("gig:" + d.id, st("gig:" + d.id) === d.s ? "" : d.s, g ? gigMeta(g) : undefined); },
+  move: (d) => track(d.key, d.s),
+  howto(d) {
+    const r = byId(D.roles, d.id); if (!r) return;
+    const ref = r.referral;
+    const note = ref ? `Hi ${String(ref.name).split(" ")[0]}, I'm ${D.profile.first_name}, a final-year AI student. I just applied for ${r.title} at ${r.company} — I've built ${D.profile.projects[0].short}. Would value 10 minutes of advice on the team.` : "";
+    openDlg(`<button class="x" data-act="close">✕</button><h2>${esc(r.title)}</h2>
+      <p class="sub">${esc(r.company || "")} · ${esc(r.platform || "")} · ${esc(r.location || "")}</p>
+      <div class="row">${verdictTag(r.trust?.verdict)}${(r.trust?.good || []).map((x) => `<span class="tag bA">${esc(x)}</span>`).join("")}${(r.trust?.warn || []).map((x) => `<span class="tag bC">${esc(x)}</span>`).join("")}</div>
+      <h3>How to apply</h3><ol class="steps">${(r.steps || []).map((x) => `<li><b>${esc(x)}</b><p></p></li>`).join("")}</ol>
+      ${r.keywords?.length ? `<h3>Put these words in your resume / answers</h3><div class="row">${r.keywords.map((k) => `<span class="tag who">${esc(k)}</span>`).join("")}</div>` : ""}
+      ${ref ? `<h3>Ask for a referral</h3><p class="dim">${esc(ref.name)} — ${esc(ref.role || "")}<br>${ref.email ? esc(ref.email) + ` <span class="score ${gradeCls(ref.grade)}">${esc(ref.grade || "")}</span>` : "No email — use LinkedIn"} ${ref.linkedin ? `· <a href="${safeUrl(ref.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>` : ""}</p><pre class="copy">${esc(note)}</pre><button class="mini" data-act="copy" data-t="${esc(note)}">Copy note</button>` : ""}
+      <div class="row" style="margin-top:18px"><a class="primary" href="${safeUrl(r.url)}" target="_blank" rel="noopener noreferrer">Open the job ↗</a><button class="ghost" data-act="role" data-id="${esc(r.id)}" data-s="applied">Mark as applied</button></div>`);
+  },
+  proposal(d) {
+    const g = byId(D.gigs, d.id); if (!g) return;
+    openDlg(`<button class="x" data-act="close">✕</button><h2>Proposal draft</h2><p class="sub">${esc(g.title)}</p>
+      <p class="dim">${esc(g.ai.summary || "")}${g.ai.est_hours ? " · about " + esc(g.ai.est_hours) + " h of work" : ""}</p>
+      ${(g.ai.red_flags || []).map((x) => `<p class="flag warn">${esc(x)}</p>`).join("")}
+      <pre class="copy" id="prop">${esc(g.ai.proposal)}</pre>
+      <p class="faint small">Change two lines so it sounds like you. Never pay to bid, and never move to WhatsApp or Telegram.</p>
+      <div class="row"><button class="primary" data-act="copy" data-t="${esc(g.ai.proposal)}">Copy</button><a class="ghost" href="${safeUrl(g.url)}" target="_blank" rel="noopener noreferrer">Open gig ↗</a><button class="ghost" data-act="gig" data-id="${esc(g.id)}" data-s="bid">Mark bid sent</button></div>`);
+  },
+  company(d) { companyDlg(d.key); },
+  copy(d) { navigator.clipboard?.writeText(d.t).then(() => toast("Copied"), () => toast("Select and copy manually", true)); },
+  close() { $("#dlg").close(); },
+  costatus(d, el) { track("company:" + d.key, el.value); },
+  pfstatus(d, el) { track("platform:" + d.name, el.value); },
+  async savesettings() {
+    const pick = (g) => [...document.querySelectorAll(`[data-set="${g}"].on`)].map((b) => b.dataset.v);
+    const body = {main_sectors: pick("main_sectors"), other_sectors: pick("other_sectors"), locations: pick("locations"), roles: pick("roles"), gig_types: pick("gig_types")};
+    try { const r = await post("/api/settings", body); D.settings = r.settings; S.f = {}; store.set("f", {}); render(); toast("Saved — new searches use it on the next run"); }
+    catch (e) { toast("Couldn't save settings", true); }
+  },
+  setchip(d, el) {
+    if (d.g === "main_sectors" || d.g === "other_sectors") {   // a sector is either main or other
+      const other = d.g === "main_sectors" ? "other_sectors" : "main_sectors";
+      const twin = document.querySelector(`[data-set="${other}"][data-v="${CSS.escape(d.v)}"]`);
+      if (!el.classList.contains("on") && twin) twin.classList.remove("on");
+    }
+    el.classList.toggle("on");
+  },
+  async addearn() {
+    const v = (id) => $("#" + id).value;
+    try { const r = await post("/api/earning", {date: v("eDate"), amount_inr: v("eAmt"), source: v("eSrc"), note: v("eNote")}); D.tracker.earnings = r.earnings; render(); toast("Earning added"); }
+    catch (e) { toast("Check the date and amount", true); }
+  },
+  async refresh() { await load(true); toast("Up to date"); },
+};
+document.addEventListener("change", (e) => { const el = e.target.closest("[data-change]"); if (el) ACT[el.dataset.change](el.dataset, el); });
+document.addEventListener("input", (e) => { if (e.target.id === "q") { S.f.q = e.target.value; clearTimeout(S._q); S._q = setTimeout(() => { render(); const q = $("#q"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
+function openDlg(html) { const d = $("#dlg"); d.innerHTML = html; d.showModal(); }
+
+/* ---------- pages: CAREER ---------- */
+function careerToday() {
+  const roles = openRoles();
+  const new48 = roles.filter((r) => Date.now() / 1000 - (r.first_seen || 0) < 172800).length;
+  const toContact = D.companies.filter((c) => ["", "to contact"].includes(st("company:" + c.key)));
+  const alerts = D.health.roles["Job-alert emails"] || {};
+  const hr = new Date().getHours();
+  return `<section class="stage"><div class="orb"></div>
+    <div class="eyebrow">Career · fresher & entry-level · ${esc(D.settings.main_sectors.join(" · "))}</div>
+    <h1>Good ${hr < 12 ? "morning" : hr < 17 ? "afternoon" : "evening"},<br>${esc(D.profile.first_name)}.</h1>
+    <p class="lede">${new48} new roles match your sectors and roles. Apply to three today and ask one person for a referral. That's the whole job.</p>
+    <div class="row"><button class="primary" data-tab="jobs">See all jobs</button><button class="ghost" data-tab="apps">My applications</button></div></section>
+  <div class="kpis">
+    <div class="kpi"><span class="k">New roles · 48 h</span><b>${new48}</b><p>${D.roles.length} open entry-level roles in total.</p></div>
+    <div class="kpi"><span class="k">Applied this week</span><b>${countStatus("role:", ["applied", "interview", "offer"], weekAgo())}</b><p>Target: 10 a week.</p></div>
+    <div class="kpi"><span class="k">Interviews</span><b class="tA">${countStatus("role:", ["interview"])}</b><p>${countStatus("role:", ["offer"])} offer(s).</p></div>
+    <div class="kpi"><span class="k">Startups to contact</span><b class="tC">${toContact.length}</b><p>${D.blocked.length} risky posts blocked for you.</p></div>
+  </div>
+  <div class="board">
+    <section class="col"><header><h3>1 · Apply</h3><span class="count">best matches</span></header>
+      ${roles.slice(0, 3).map((r) => roleCard(r, true)).join("") || '<p class="empty">No roles yet. The radar runs 4 times a day.</p>'}</section>
+    <section class="col"><header><h3>2 · Reach out</h3><span class="count">${toContact.length}</span></header>
+      ${toContact.slice(0, 3).map((c) => `<article class="card"><div class="card-top"><span>${esc(c.tier || "")}</span><span class="score ${gradeCls(c.contacts[0]?.email_grade)}">${esc((c.contacts[0]?.email_grade || "LinkedIn").split(" ")[0])}</span></div>
+        <h4>${esc(c.company)}</h4><p class="sum">${esc(c.contacts[0] ? c.contacts[0].name + " · " + (c.contacts[0].role || "") : "No contact yet")}</p>
+        <div class="card-foot"><span class="tag bB">${esc(c.fields || "")}</span><button class="mini" data-act="company" data-key="${esc(c.key)}">Open</button></div></article>`).join("") || '<p class="empty">Companies appear after the Monday/Thursday run.</p>'}</section>
+    <section class="col"><header><h3>3 · Keep it flowing</h3></header>
+      <article class="card"><h4>${alerts.ok ? "Job-alert emails connected ✓" : "Connect your job alerts"}</h4>
+        <p class="sum">${alerts.ok ? `Read ${esc(alerts.emails ?? 0)} alert emails in the last run (LinkedIn, Naukri, Internshala …).` : "Turn on LinkedIn / Naukri / Internshala job alerts to your Gmail. Career Hub reads them, so every alert becomes a checked card here."}</p>
+        <div class="card-foot"><button class="mini" data-tab="sites">How + search links</button></div></article>
+      ${D.links.slice(0, 2).map((l) => `<article class="card"><div class="card-top"><span>${esc(l.role)} · ${esc(l.location)}</span></div><div class="linkset">${l.links.slice(0, 4).map(([n, u]) => `<a class="mini" href="${safeUrl(u)}" target="_blank" rel="noopener noreferrer">${esc(n)} ↗</a>`).join("")}</div></article>`).join("")}
+    </section></div>`;
+}
+
+function careerJobs() {
+  const sectors = [...D.settings.main_sectors, ...D.settings.other_sectors];
+  const locs = D.settings.locations;
+  const srcs = ["Company careers", "Job alerts", "Remote boards", "Web search"];
+  const kindOf = {ats: "Company careers", alert: "Job alerts", board: "Remote boards", search: "Web search"};
+  const trusts = ["Verified", "Likely", "Unverified"];
+  const fS = fsel("sec", sectors), fT = fsel("trust", trusts), fK = fsel("src", srcs);
+  const q = (S.f.q || "").toLowerCase();
+  let list = openRoles().filter((r) =>
+    (!r.sectors?.length || r.sectors.some((x) => fS.includes(x)) || fS.length === sectors.length) &&
+    fT.map((x) => x.toLowerCase()).includes(r.trust?.verdict) && fK.includes(kindOf[r.source_kind]) &&
+    (S.f.anyloc || r.location_ok !== false) &&
+    (!q || `${r.title} ${r.company} ${r.location}`.toLowerCase().includes(q)));
+  if (S.f.sort === "new") list.sort((a, b) => (b.posted || b.first_seen) - (a.posted || a.first_seen));
+  return `<div class="page-head"><h2>Jobs</h2><p>Fresher and entry-level only. ${D.senior_hidden} senior roles hidden, ${D.blocked.length} risky posts blocked (see Safety). Sources: your target companies' careers pages, your job-alert emails (LinkedIn, Naukri, Internshala…), remote boards and public job pages.</p></div>
+    <div class="filters">
+      <div class="frow"><input class="search" id="q" placeholder="Search title, company, city…" value="${esc(S.f.q || "")}">
+        <select class="sel" data-change="sortset"><option value="best">Best match</option><option value="new" ${S.f.sort === "new" ? "selected" : ""}>Newest</option></select>
+        <button class="mini ${S.f.anyloc ? "on" : ""}" data-act="anyloc">Any location</button></div>
+      <div class="frow" data-all='${esc(JSON.stringify(sectors))}'><span class="lab">Sector</span>${chips(sectors, fS, "sec")}</div>
+      <div class="frow" data-all='${esc(JSON.stringify(srcs))}'><span class="lab">Source</span>${chips(srcs, fK, "src")}</div>
+      <div class="frow" data-all='${esc(JSON.stringify(trusts))}'><span class="lab">Trust</span>${chips(trusts, fT, "trust")}<span class="faint small">Locations: ${esc(locs.join(", "))} — change in Settings</span></div>
+    </div>
+    <p class="dim small">${list.length} roles</p>
+    <div class="grid2">${list.slice(0, 120).map((r) => roleCard(r)).join("") || '<p class="empty">Nothing matches. Widen the filters or check Settings.</p>'}</div>`;
+}
+ACT.sortset = (d, el) => { S.f.sort = el.value; store.set("f", S.f); render(); };
+ACT.anyloc = () => { S.f.anyloc = !S.f.anyloc; store.set("f", S.f); render(); };
+
+function boardOf(prefix, cols, emptyMsg) {
+  const items = Object.entries(T()).filter(([k, v]) => k.startsWith(prefix) && v.meta);
+  return `<div class="board b4">${cols.map(([s, label], i) => {
+    const mine = items.filter(([k, v]) => v.status === s).sort((a, b) => (b[1].updated || "").localeCompare(a[1].updated || ""));
+    return `<section class="col"><header><h3>${label}</h3><span class="count">${mine.length}</span></header>
+      ${mine.map(([k, v]) => `<article class="card"><div class="card-top"><span>${esc(v.meta.company || v.meta.platform || "")}</span><span>${esc((v.updated || "").slice(5, 10))}</span></div>
+        <h4><a href="${safeUrl(v.meta.url)}" target="_blank" rel="noopener noreferrer">${esc(v.meta.title)}</a></h4>
+        <div class="card-foot"><span class="row">${i > 0 ? `<button class="mini" data-act="move" data-key="${esc(k)}" data-s="${cols[i - 1][0]}">←</button>` : ""}${i < cols.length - 1 ? `<button class="mini" data-act="move" data-key="${esc(k)}" data-s="${cols[i + 1][0]}">→</button>` : ""}</span>
+        <button class="mini" data-act="move" data-key="${esc(k)}" data-s="${prefix === "role:" ? "rejected" : "lost"}">Close</button></div></article>`).join("") || `<p class="empty">${emptyMsg}</p>`}</section>`;
+  }).join("")}</div>`;
+}
+const careerApps = () => `<div class="page-head"><h2>Applications</h2><p>Every job you saved or applied to. Move cards along as things happen. Follow up once, 5–7 days after applying.</p></div>
+  ${boardOf("role:", [["saved", "Saved"], ["applied", "Applied"], ["interview", "Interview"], ["offer", "Offer"]], "Nothing here yet")}
+  <p class="faint small">Closed: ${countStatus("role:", ["rejected"])}. Rejections are normal. Keep the weekly count up.</p>`;
+
+function careerCompanies() {
+  const tiers = [...new Set(D.companies.map((c) => c.tier).filter(Boolean))];
+  const fT = fsel("tier", tiers), q = (S.f.q || "").toLowerCase();
+  const list = D.companies.filter((c) => fT.includes(c.tier) && (!q || `${c.company} ${c.fields} ${c.city}`.toLowerCase().includes(q)));
+  return `<div class="page-head"><h2>Companies</h2><p>Startups first, then corporates, in your sectors. Each has its key people and work emails, graded A–D. Open one for the talking point, a LinkedIn note and an email draft.</p></div>
+    <div class="filters"><div class="frow"><input class="search" id="q" placeholder="Search company, sector, city…" value="${esc(S.f.q || "")}"><a class="ghost" href="/api/export.xlsx">Download Excel</a></div>
+      <div class="frow" data-all='${esc(JSON.stringify(tiers))}'><span class="lab">Tier</span>${chips(tiers, fT, "tier")}</div></div>
+    <div class="tbl"><table><thead><tr><th>#</th><th>Company</th><th>Tier</th><th>Sector</th><th>City</th><th>Fit</th><th>Best contact</th><th>Email</th><th>Status</th></tr></thead><tbody>
+    ${list.map((c) => { const p = c.contacts[0] || {}; return `<tr class="click" data-act="company" data-key="${esc(c.key)}"><td>${esc(c.rank)}</td><td><b>${esc(c.company)}</b></td><td class="dim">${esc(c.tier)}</td><td>${esc(c.fields)}</td><td class="dim">${esc(c.city || "")}</td><td>${esc(c.fit || "")}</td><td>${esc(p.name || "—")}<br><span class="faint small">${esc(p.role || "")}</span></td><td>${p.email ? `<span class="score ${gradeCls(p.email_grade)}">${esc(String(p.email_grade).split(" ")[0])}</span> <span class="small">${esc(p.email)}</span>` : '<span class="faint">LinkedIn</span>'}</td><td>${esc(st("company:" + c.key, "to contact"))}</td></tr>`; }).join("") || '<tr><td colspan="9" class="empty">No companies yet. The job finder runs Monday and Thursday.</td></tr>'}
+    </tbody></table></div>`;
+}
+function companyDlg(key) {
+  const c = D.companies.find((x) => x.key === key); if (!c) return;
+  const opts = ["to contact", "contacted", "replied", "interview", "no reply"], cur = st("company:" + key, "to contact");
+  const roles = D.roles.filter((r) => r.company_key === key);
+  openDlg(`<button class="x" data-act="close">✕</button><h2>${esc(c.company)}</h2>
+    <p class="sub">${esc(c.tier)} · ${esc(c.fields)} · ${esc(c.city || "")}${c.founded ? " · founded " + esc(c.founded) : ""}${c.last_round ? " · " + esc(c.last_round) + " " + esc(c.last_round_date || "") : ""}</p>
+    <div class="row"><select class="sel" data-change="costatus" data-key="${esc(key)}">${opts.map((o) => `<option ${o === cur ? "selected" : ""}>${o}</option>`).join("")}</select>${c.website ? `<a class="ghost" href="${safeUrl(c.website)}" target="_blank" rel="noopener">Website ↗</a>` : ""}</div>
+    <p>${esc(c.what || "")}</p>
+    ${c.products ? `<p class="dim"><b>Products:</b> ${esc(c.products)}</p>` : ""}${c.research ? `<p class="dim"><b>Research:</b> ${esc(c.research)}</p>` : ""}
+    <h3>Talking point</h3><p class="dim">${esc(c.talking_point || "")}</p>
+    <h3>People</h3>${c.contacts.map((p) => `<div class="card"><div class="card-top"><span>${esc(p.category || "")}</span><span>sure they work there: ${esc(p.person_confidence || "")}</span></div><h4>${esc(p.name)} <span class="dim small">${esc(p.role || "")}</span></h4>
+      <div class="meta">${p.email ? `<span class="score ${gradeCls(p.email_grade)}">${esc(p.email_grade)}</span><span class="tag who">${esc(p.email)}</span>` : '<span class="tag">no email</span>'}${p.linkedin ? `<a class="mini" href="${safeUrl(p.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>` : ""}</div>
+      ${p.verification ? `<p class="flag warn">${esc(p.verification)}</p>` : ""}</div>`).join("") || '<p class="empty">No people found yet.</p>'}
+    ${c.linkedin_note ? `<h3>LinkedIn note</h3><pre class="copy">${esc(c.linkedin_note)}</pre><button class="mini" data-act="copy" data-t="${esc(c.linkedin_note)}">Copy</button>` : ""}
+    ${c.email_draft ? `<h3>Email draft — ${esc(c.email_subject || "")}</h3><pre class="copy">${esc(c.email_draft)}</pre><button class="mini" data-act="copy" data-t="${esc(c.email_draft)}">Copy</button>` : ""}
+    ${roles.length ? `<h3>Open entry-level roles here</h3>${roles.map((r) => `<p><a href="${safeUrl(r.url)}" target="_blank" rel="noopener">${esc(r.title)} ↗</a> <span class="faint">${esc(r.location || "")}</span></p>`).join("")}` : ""}`);
+}
+
+function careerSites() {
+  const alerts = D.health.roles["Job-alert emails"] || {};
+  return `<div class="page-head"><h2>Job sites</h2><p>One click opens each site already filtered to <b>entry-level</b>, newest first, for your roles and cities. You stay logged in, so LinkedIn Easy Apply works. Career Hub never scrapes LinkedIn, because that breaks its terms and gets accounts banned.</p></div>
+    <div class="note ${alerts.ok ? "good" : ""}">${alerts.ok ? "✓ Your job-alert emails are connected. New alerts become checked cards in Jobs." : "Set up job alerts (steps below) and add your Gmail app password to the repo secrets. Every alert then becomes a checked card in Jobs, with scams filtered."}</div>
+    <div class="bar-head"><h3>Search now</h3></div>
+    <div class="grid2">${D.links.map((l) => `<article class="card"><div class="card-top"><span>${esc(l.role)}</span><span>${esc(l.location)}</span></div>
+      <div class="linkset">${l.links.map(([n, u]) => `<a class="mini" href="${safeUrl(u)}" target="_blank" rel="noopener noreferrer">${esc(n)} ↗</a>`).join("")}</div></article>`).join("")}</div>
+    <div class="bar-head"><h3>How to apply on each platform</h3></div>
+    <div class="grid2">${D.playbook.map((p) => `<article class="card"><h4>${esc(p.platform)}</h4><ol class="small dim" style="margin:0;padding-left:18px">${p.apply.map((x) => `<li>${esc(x)}</li>`).join("")}</ol>${p.alerts ? `<p class="flag ok">Alerts: ${esc(p.alerts)}</p>` : ""}</article>`).join("")}</div>`;
+}
+
+/* ---------- pages: FREELANCE ---------- */
+function freeToday() {
+  const gigs = openGigs(), new24 = gigs.filter((g) => Date.now() / 1000 - (g.first_seen || 0) < 86400).length;
+  const earned = monthEarned(), [lo, hi] = D.goal;
+  const nextP = D.platforms.filter((p) => p.priority < 9 && st("platform:" + p.name, "not applied") === "not applied").sort((a, b) => a.priority - b.priority).slice(0, 2);
+  const active = D.platforms.filter((p) => st("platform:" + p.name) === "active");
+  return `<section class="stage"><div class="orb fl"></div>
+    <div class="eyebrow">Freelance · under ${D.hours} h a week · goal ${inr(lo)}–${inr(hi)} / month</div>
+    <h1>Let's earn,<br>${esc(D.profile.first_name)}.</h1>
+    <p class="lede">${new24} new gigs since yesterday, with scams, low pay and non-India jobs already removed. Bid on two using the ready drafts, then do the work at the weekend.</p>
+    <div class="row"><button class="primary" data-tab="gigs">See gigs</button><button class="ghost" data-tab="ai">AI-task platforms</button></div></section>
+  <div class="kpis">
+    <div class="kpi"><span class="k">New gigs · 24 h</span><b>${new24}</b><p>${gigs.length} open in total.</p></div>
+    <div class="kpi"><span class="k">Bids this week</span><b>${countStatus("gig:", ["bid", "won", "done", "paid"], weekAgo())}</b><p>Target: 5–8 a week.</p></div>
+    <div class="kpi"><span class="k">Earned this month</span><b class="tA">${inr(earned)}</b><div class="split"><i style="width:${Math.min(100, earned / lo * 100)}%"></i></div><p>Goal ${inr(lo)}–${inr(hi)}.</p></div>
+    <div class="kpi"><span class="k">AI platforms active</span><b class="tB">${active.length}</b><p>Aim for 2 active.</p></div>
+  </div>
+  <div class="board">
+    <section class="col"><header><h3>1 · Bid</h3><span class="count">best new</span></header>${gigs.slice(0, 3).map((g) => gigCard(g, true)).join("") || '<p class="empty">No gigs yet. The radar runs every 6 hours.</p>'}</section>
+    <section class="col"><header><h3>2 · AI tasks</h3></header>
+      ${active.length ? `<article class="card"><h4>Active: ${esc(active.map((p) => p.name).join(", "))}</h4><p class="sum">Check them for new tasks. Steady, weekly pay.</p></article>` : ""}
+      ${nextP.map((p) => `<article class="card"><div class="card-top"><span>India: ${esc(p.india)}</span></div><h4>Apply to ${esc(p.name)}</h4><p class="sum">${esc(p.fit)} · ${esc(p.pay)}</p><div class="card-foot"><a class="primary" href="${safeUrl(p.url)}" target="_blank" rel="noopener">Apply ↗</a><button class="mini" data-tab="ai">Track</button></div></article>`).join("")}</section>
+    <section class="col"><header><h3>3 · This week</h3></header><ol class="steps">
+      <li><b>Daily · 10 min</b><p>Bid on 1–2 gigs from the morning email.</p></li>
+      <li><b>Once · 1 h</b><p>One AI-platform application until two are active.</p></li>
+      <li><b>Weekend · 4–6 h</b><p>Do the paid work, then log it in Earnings.</p></li></ol></section></div>`;
+}
+
+function freeGigs() {
+  const types = D.settings.gig_types.map((t) => D.catalog.gig_types[t]);
+  const srcs = [...new Set(D.gigs.map((g) => g.source))];
+  const fTy = fsel("gtype", types), fSr = fsel("gsrc", srcs), q = (S.f.q || "").toLowerCase();
+  const list = openGigs().filter((g) => fTy.includes(D.catalog.gig_types[g.category]) && fSr.includes(g.source) &&
+    (!q || `${g.title} ${g.company} ${g.desc}`.toLowerCase().includes(q)));
+  return `<div class="page-head"><h2>Gigs</h2><p>Paid freelance and contract work you can take from India. Already removed: scams, not open to India, under ₹500/hr, and senior-only roles. Full-time jobs are on the Career side.</p></div>
+    <div class="filters"><div class="frow"><input class="search" id="q" placeholder="Search gigs…" value="${esc(S.f.q || "")}"></div>
+      <div class="frow" data-all='${esc(JSON.stringify(types))}'><span class="lab">Type</span>${chips(types, fTy, "gtype")}</div>
+      <div class="frow" data-all='${esc(JSON.stringify(srcs))}'><span class="lab">Source</span>${chips(srcs, fSr, "gsrc")}</div></div>
+    <p class="dim small">${list.length} gigs</p>
+    <div class="grid2">${list.slice(0, 120).map((g) => gigCard(g)).join("") || '<p class="empty">No gigs match.</p>'}</div>`;
+}
+
+function freeAI() {
+  const opts = ["not applied", "applied", "onboarding", "active", "rejected"];
+  return `<div class="page-head"><h2>AI-task platforms</h2><p>Paid AI-training and evaluation work (coding, maths, STEM). Flexible hours, paid weekly. Never pay anything to join. Pay and India eligibility are as reported in Oct 2026, so check each site.</p></div>
+    <div class="grid2">${D.platforms.slice().sort((a, b) => a.priority - b.priority).map((p) => `<article class="card">
+      <div class="card-top"><span>India: ${esc(p.india)}</span><span>${esc(p.payout)}</span></div>
+      <h4><a href="${safeUrl(p.url)}" target="_blank" rel="noopener">${esc(p.name)} ↗</a></h4><p class="sum">${esc(p.fit)} · ${esc(p.pay)}</p>
+      <div class="card-foot"><span class="tag ${p.priority === 1 ? "bA" : p.priority >= 9 ? "bD" : "bB"}">${p.priority === 1 ? "Top pick" : p.priority >= 9 ? "Not for India" : "Good"}</span>
+      <select class="sel" data-change="pfstatus" data-name="${esc(p.name)}" ${p.priority >= 9 ? "disabled" : ""}>${opts.map((o) => `<option ${o === st("platform:" + p.name, "not applied") ? "selected" : ""}>${o}</option>`).join("")}</select></div></article>`).join("")}</div>`;
+}
+const freePipe = () => `<div class="page-head"><h2>Pipeline</h2><p>Gigs you saved or bid on. Move them along. When one is paid, log it in Earnings.</p></div>
+  ${boardOf("gig:", [["saved", "Saved"], ["bid", "Bid sent"], ["won", "Won"], ["done", "Done"]], "Nothing here yet")}
+  <p class="faint small">Paid: ${countStatus("gig:", ["paid"])} · Lost: ${countStatus("gig:", ["lost"])}</p>`;
+
+function freeEarn() {
+  const e = D.tracker.earnings || [], by = {};
+  e.forEach((x) => { const m = String(x.date).slice(0, 7); by[m] = (by[m] || 0) + Number(x.amount_inr || 0); });
+  const months = Object.keys(by).sort().slice(-8), max = Math.max(D.goal[0], ...Object.values(by), 1);
+  return `<div class="page-head"><h2>Earnings</h2><p>Log every payment. The bars show each month against your ${inr(D.goal[0])}–${inr(D.goal[1])} goal.</p></div>
+    <div class="filters"><div class="formrow">
+      <label class="field">Date<input id="eDate" type="date" value="${new Date().toISOString().slice(0, 10)}"></label>
+      <label class="field">Amount (₹)<input id="eAmt" type="number" min="1" step="100"></label>
+      <label class="field">From<input id="eSrc" placeholder="client / platform"></label>
+      <label class="field">Note<input id="eNote"></label>
+      <button class="primary" data-act="addearn">Add</button></div></div>
+    <div class="bars">${months.map((m) => `<div><span>${inr(by[m])}</span><i style="height:${Math.max(4, by[m] / max * 120)}px"></i><span>${m.slice(2)}</span></div>`).join("") || '<p class="empty">No earnings logged yet. The first one is the hardest.</p>'}</div>
+    <div class="tbl" style="margin-top:14px"><table><thead><tr><th>Date</th><th>Amount</th><th>From</th><th>Note</th></tr></thead><tbody>
+    ${e.slice().reverse().map((x) => `<tr><td>${esc(x.date)}</td><td>${inr(x.amount_inr)}</td><td>${esc(x.source)}</td><td class="dim">${esc(x.note)}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function freeKit() {
+  const P = D.profile;
+  const overview = `I'm ${P.first_name}, ${P.intro}. I build practical AI tools in Python: LLM apps and chatbots (LangGraph, RAG with FAISS), computer vision, data automation and optimisation. Recent work: ${P.projects.slice(0, 3).map((p) => p.short).join("; ")}. I keep scope small and clear, share progress early, and deliver clean, documented code.`;
+  return `<div class="page-head"><h2>Toolkit</h2><p>Copy-paste profile text, starting rates and the proposal formula.</p></div>
+    <div class="grid2"><article class="card"><h4>Headline</h4><pre class="copy">${esc(P.headline)}</pre><button class="mini" data-act="copy" data-t="${esc(P.headline)}">Copy</button></article>
+    <article class="card"><h4>Profile overview (Freelancer.com, Upwork, Contra)</h4><pre class="copy">${esc(overview)}</pre><button class="mini" data-act="copy" data-t="${esc(overview)}">Copy</button></article></div>
+    <div class="bar-head"><h3>Starting rates</h3></div>
+    <div class="tbl"><table><thead><tr><th>Work</th><th>Start</th><th>After 5 good reviews</th></tr></thead><tbody>
+      <tr><td>Small Python, scraping or automation task</td><td>₹2,000–₹6,000 fixed (or $10–15/hr)</td><td>$20–30/hr</td></tr>
+      <tr><td>LLM chatbot / RAG prototype</td><td>₹8,000–₹25,000 fixed</td><td>$25–40/hr</td></tr>
+      <tr><td>Technical article (1,000–1,500 words)</td><td>₹2,000–₹4,000</td><td>₹5,000+</td></tr>
+      <tr><td>AI-task platforms</td><td>the platform's rate</td><td>higher tiers unlock with quality</td></tr></tbody></table></div>
+    <div class="bar-head"><h3>Proposal formula</h3></div>
+    <ol class="steps"><li><b>Their problem first</b><p>Use their own words, not "I".</p></li><li><b>One proof</b><p>A project or skill that matches.</p></li>
+      <li><b>Your first step</b><p>Show you've already thought about it.</p></li><li><b>One question</b><p>It starts a conversation. Send within hours while bids are low.</p></li></ol>
+    <div class="bar-head"><h3>Getting paid</h3></div>
+    <ol class="steps"><li><b>Platforms</b><p>Use the built-in payout: PayPal, Payoneer, Wise, Stripe or Deel.</p></li>
+      <li><b>Direct clients abroad</b><p>Wise or Payoneer. Send an invoice and keep each payment's FIRA/FIRC from your bank.</p></li>
+      <li><b>Tax</b><p>Freelance income is taxable in India. Keep every invoice and ask a CA before your first ITR with freelance income.</p></li></ol>`;
+}
+
+/* ---------- pages: GLOBAL ---------- */
+function pageSettings() {
+  const s = D.settings, c = D.catalog;
+  const set = (g, list, sel) => list.map((x) => `<button class="mini ${sel.includes(x) ? "on" : ""}" data-act="setchip" data-set="${g}" data-g="${g}" data-v="${esc(x)}">${esc(g === "gig_types" ? c.gig_types[x] : x)}</button>`).join("");
+  return `<div class="page-head"><h2>Settings</h2><p>Is Career Hub specific to you? Yes. It's built around your profile: your skills and projects score every job and gig, and write your proposals and notes. Everything else is chosen here: sectors, cities, roles and gig types. The radars use your picks on their next run.</p></div>
+    <div class="filters">
+      <div class="frow"><span class="lab">Main sectors</span>${set("main_sectors", c.sectors, s.main_sectors)}</div>
+      <p class="faint small" style="margin:0">Searched deepest and ranked first. Pick 2–4.</p>
+      <div class="frow"><span class="lab">Also include</span>${set("other_sectors", c.sectors, s.other_sectors)}</div>
+      <div class="frow"><span class="lab">Locations</span>${set("locations", c.cities.concat(c.remote), s.locations)}</div>
+      <div class="frow"><span class="lab">Roles</span>${set("roles", c.roles, s.roles)}</div>
+      <div class="frow"><span class="lab">Gig types</span>${set("gig_types", Object.keys(c.gig_types), s.gig_types)}</div>
+      <div class="frow"><span class="lab">Experience</span><span class="lock">🔒 ${esc(c.experience)}</span><span class="faint small">Fixed. Senior roles and roles asking for 2+ years are always hidden.</span></div>
+    </div>
+    <div class="row"><button class="primary" data-act="savesettings">Save settings</button><span class="faint small">Gigs update within 6 hours, jobs within 6 hours, companies on the next Monday/Thursday run.</span></div>
+    <div class="bar-head"><h3>Your profile</h3><span class="faint small">Edit config.py in GitHub to change it. It redeploys automatically.</span></div>
+    <div class="grid2"><article class="card"><h4>${esc(D.profile.name)}</h4><p class="sum">${esc(D.profile.headline)}</p><div class="meta">${D.profile.skills.map((x) => `<span class="tag">${esc(x)}</span>`).join("")}</div></article>
+      <article class="card"><h4>Projects used in matching</h4>${D.profile.projects.map((p) => `<p class="flag ok">${esc(p.name)}</p>`).join("")}</article></div>`;
+}
+
+function pageSafety() {
+  return `<div class="page-head"><h2>Safety</h2><p>Every job and gig passes a scam check before you see it. Cards say where the post came from: <span class="tag bA">✓ Verified source</span> official careers page or your own alert, <span class="tag bB">Likely real</span> known platform, <span class="tag bC">Unverified</span> found by web search. Risky posts never reach your feed. They're listed below with the reason.</p></div>
+    <ol class="steps">${D.safety.map((r) => `<li><b>${esc(r.title)}</b><p>${esc(r.text)}</p></li>`).join("")}</ol>
+    <div class="row" style="margin:18px 0"><a class="ghost" href="https://cybercrime.gov.in" target="_blank" rel="noopener">Report: cybercrime.gov.in ↗</a><span class="lock">Helpline 1930</span></div>
+    <div class="bar-head"><h3>Blocked for you (${D.blocked.length})</h3></div>
+    <div class="tbl"><table><thead><tr><th>Post</th><th>Where</th><th>Why it was blocked</th></tr></thead><tbody>
+    ${D.blocked.map((b) => `<tr><td>${esc(b.title)}<br><span class="faint small">${esc(b.company || "")}</span></td><td class="dim">${esc(b.platform || "")}</td><td>${(b.why || []).map((w) => `<span class="tag bD">${esc(w)}</span>`).join(" ")}</td></tr>`).join("") || '<tr><td colspan="3" class="empty">Nothing blocked yet.</td></tr>'}
+    </tbody></table></div>`;
+}
+
+function pageStatus() {
+  const rows = (obj, side) => Object.entries(obj || {}).map(([k, v]) => `<tr><td>${esc(side)}</td><td>${esc(k)}</td><td>${v.ok ? '<span class="tA">● working</span>' : '<span class="tD">● down</span>'}</td><td>${esc(v.count ?? "")}</td><td class="dim">${esc(ago(v.at))}</td><td class="faint small">${esc(v.error || "")}</td></tr>`).join("");
+  const j = D.health.jobs || {};
+  return `<div class="page-head"><h2>Status</h2><p>Everything runs by itself on a schedule. A source marked down usually fixes itself on the next run, and the others keep working.</p></div>
+    <div class="tbl"><table><thead><tr><th>Side</th><th>Source</th><th>State</th><th>Items</th><th>Checked</th><th>Note</th></tr></thead><tbody>${rows(D.health.gigs, "Freelance")}${rows(D.health.roles, "Career")}</tbody></table></div>
+    <div class="bar-head"><h3>Company finder</h3></div>
+    <div class="kpis"><div class="kpi"><span class="k">Last run</span><b style="font-size:22px">${esc(j.finished_ist || "not yet")}</b></div>
+      <div class="kpi"><span class="k">Companies profiled</span><b>${esc(j.profiled ?? 0)}</b></div>
+      <div class="kpi"><span class="k">Contacts</span><b>${esc(j.contacts ?? 0)}</b></div>
+      <div class="kpi"><span class="k">Reliable emails (A/B)</span><b class="tA">${esc(j.key_contacts_with_reliable_email ?? 0)}</b></div></div>
+    <div class="row"><button class="ghost" data-act="refresh">Reload data</button>${D.github ? `<a class="ghost" href="https://github.com/${esc(D.github)}/actions" target="_blank" rel="noopener">Run logs ↗</a>` : ""}</div>`;
+}
+
+/* ---------- render ---------- */
+const VIEWS = {career: {today: careerToday, jobs: careerJobs, apps: careerApps, companies: careerCompanies, sites: careerSites},
+  freelance: {today: freeToday, gigs: freeGigs, ai: freeAI, pipe: freePipe, earn: freeEarn, kit: freeKit},
+  settings: {settings: pageSettings}, safety: {safety: pageSafety}, status: {status: pageStatus}};
+function render() {
+  if (!D) return;
+  const ws = TABS[S.ws] ? S.ws : (S.ws === "settings" || S.ws === "safety" || S.ws === "status" ? S.ws : "career");
+  document.querySelectorAll(".switch button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.ws === (TABS[ws] ? ws : ""))));
+  $("#tabs").innerHTML = TABS[ws] ? TABS[ws].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === S.tab}">${l}</button>`).join("") : `<button role="tab" aria-selected="true">${esc(ws[0].toUpperCase() + ws.slice(1))}</button>`;
+  document.querySelectorAll("[data-go]").forEach((b) => b.classList.toggle("on", b.dataset.go === ws));
+  $("#view").innerHTML = (VIEWS[ws][S.tab] || Object.values(VIEWS[ws])[0])();
+  const anyDown = [...Object.values(D.health.gigs || {}), ...Object.values(D.health.roles || {})].some((v) => !v.ok);
+  $("#statusBtn").classList.toggle("bad", anyDown);
+}
+async function load(fresh) {
+  const r = await fetch("/api/data" + (fresh ? "?fresh=1" : ""));
+  D = await r.json();
+  D.tracker.items = D.tracker.items || {};
+  $("#who").textContent = "for " + D.profile.first_name;
+  $("#upd").textContent = `Gigs ${ago(D.gigs_updated) || "—"} · Jobs ${ago(D.roles_updated) || "—"}`;
+  render();
+}
+S.f = store.get("f", {});
+readHash();
+load().catch(() => { $("#view").innerHTML = '<div class="loading">Couldn\'t load data. Refresh in a minute; the app may be waking up.</div>'; });
+</script>
+</body>
+</html>

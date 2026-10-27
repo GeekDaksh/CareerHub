@@ -37,29 +37,81 @@ PROFILE = {
     ],
 }
 
-# ============================ JOB FINDER (companies) ============================
-SEARCH_TERMS = {
-    # priority 1
-    "bioinformatics": ["bioinformatics", "computational biology", "AI drug discovery"],
-    "supply chain":   ["supply chain AI", "logistics tech"],
-    "SDL":            ["self-driving lab", "lab automation AI"],
-    # priority 2
-    "healthtech":      ["healthtech AI"],
-    "climate":         ["climate tech", "cleantech energy AI"],
-    "agritech":        ["agritech AI"],
-    "robotics":        ["robotics", "drone"],
-    "defence tech":    ["defence tech"],
-    "quantum":         ["quantum computing"],
-    "semiconductors":  ["semiconductor chip design"],
-    "spacetech":       ["spacetech"],
-    "materials":       ["materials science AI"],
-    "manufacturing":   ["industrial AI manufacturing"],
-    "IoT/embedded":    ["IoT embedded systems"],
-    "computer vision": ["computer vision AI"],
-    "generative AI":   ["generative AI LLM"],
+# ============================ CHOICES (change them in the app's ⚙️ Settings tab) ============================
+# These are the DEFAULTS. Your picks in the app are saved to the private dataset and override them.
+
+# Every sector you can pick, with the search words used to find companies in it
+SECTOR_CATALOG = {
+    "bioinformatics":     ["bioinformatics", "computational biology", "AI drug discovery"],
+    "supply chain":       ["supply chain AI", "logistics tech"],
+    "SDL":                ["self-driving lab", "lab automation AI"],
+    "healthtech":         ["healthtech AI", "medical imaging AI"],
+    "climate":            ["climate tech", "cleantech energy AI"],
+    "EV & batteries":     ["battery tech", "EV battery management"],
+    "agritech":           ["agritech AI"],
+    "robotics":           ["robotics", "autonomous robots"],
+    "drones & defence":   ["drone", "defence tech"],
+    "quantum":            ["quantum computing"],
+    "semiconductors":     ["semiconductor chip design"],
+    "spacetech":          ["spacetech"],
+    "materials":          ["materials science AI"],
+    "manufacturing":      ["industrial AI manufacturing"],
+    "IoT/embedded":       ["IoT embedded systems", "edge AI"],
+    "computer vision":    ["computer vision AI"],
+    "generative AI":      ["generative AI LLM", "AI agents"],
+    "media & content AI": ["video AI", "media tech AI"],
+    "cybersecurity":      ["cybersecurity AI"],
+    "edtech":             ["edtech AI"],
 }
-TOP_DOMAINS = ["bioinformatics", "supply chain", "SDL"]
-CITIES = ["Bengaluru", "Pune", "Mumbai", "Hyderabad"]
+
+# Cities you can pick (+ remote options)
+CITY_OPTIONS = ["Bengaluru", "Pune", "Mumbai", "Hyderabad", "Delhi NCR", "Chennai", "Ahmedabad", "Kolkata",
+                "Kochi", "Jaipur", "Indore", "Chandigarh"]
+REMOTE_OPTIONS = ["Remote (India)", "Remote (worldwide)"]
+CITY_ALIASES = {"Bengaluru": ["bengaluru", "bangalore"], "Delhi NCR": ["delhi", "gurugram", "gurgaon", "noida"],
+                "Mumbai": ["mumbai", "navi mumbai", "thane"], "Kochi": ["kochi", "cochin"]}
+
+# Roles you can target: words that must appear in a job title
+ROLE_CATALOG = {
+    "ML / AI Engineer":           ["machine learning", "ml engineer", "ai engineer", "ml ops", "mlops", "ai/ml", "applied scientist"],
+    "LLM / GenAI Engineer":       ["llm", "genai", "generative ai", "nlp", "prompt", "ai agent"],
+    "Data Scientist":             ["data scientist", "data science"],
+    "Research Engineer":          ["research engineer", "research scientist", "research associate", "research intern"],
+    "Computer Vision Engineer":   ["computer vision", "vision engineer", "perception", "image"],
+    "Bioinformatics":             ["bioinformatic", "computational biolog", "genomic", "cheminformatic"],
+    "Robotics / Autonomy":        ["robotics", "autonomy", "autonomous", "slam", "controls"],
+    "Embedded / Firmware":        ["embedded", "firmware", "iot", "fpga"],
+    "Software Engineer (Python)": ["python", "backend", "software engineer", "sde", "developer"],
+    "Data Analyst":               ["data analyst", "analytics", "business analyst"],
+    "Optimisation / Simulation":  ["optimization", "optimisation", "simulation", "operations research"],
+}
+
+# What to type into job searches for each role (used by the role radar and the one-click search links)
+ROLE_QUERY = {
+    "ML / AI Engineer": "Machine Learning Engineer", "LLM / GenAI Engineer": "Generative AI Engineer",
+    "Data Scientist": "Data Scientist", "Research Engineer": "AI Research Engineer",
+    "Computer Vision Engineer": "Computer Vision Engineer", "Bioinformatics": "Bioinformatics",
+    "Robotics / Autonomy": "Robotics Engineer", "Embedded / Firmware": "Embedded Engineer",
+    "Software Engineer (Python)": "Python Developer", "Data Analyst": "Data Analyst",
+    "Optimisation / Simulation": "Optimization Engineer",
+}
+
+DEFAULT_SETTINGS = {
+    "main_sectors": ["bioinformatics", "supply chain", "SDL"],             # searched in depth, ranked first
+    "other_sectors": ["healthtech", "climate", "EV & batteries", "agritech", "robotics", "drones & defence",
+                      "quantum", "semiconductors", "spacetech", "materials", "manufacturing", "IoT/embedded",
+                      "computer vision", "generative AI", "media & content AI"],
+    "locations": ["Bengaluru", "Pune", "Mumbai", "Hyderabad", "Remote (India)", "Remote (worldwide)"],
+    "roles": ["ML / AI Engineer", "LLM / GenAI Engineer", "Data Scientist", "Research Engineer",
+              "Computer Vision Engineer", "Bioinformatics", "Optimisation / Simulation"],
+    "gig_types": ["ai_tasks", "tech", "content", "marketing"],
+}
+EXPERIENCE = "Fresher / entry-level"   # fixed: senior roles and roles needing 2+ years are always hidden
+
+# Derived defaults (the pipelines replace these with your saved settings)
+SEARCH_TERMS = {s: SECTOR_CATALOG[s] for s in DEFAULT_SETTINGS["main_sectors"] + DEFAULT_SETTINGS["other_sectors"]}
+TOP_DOMAINS = list(DEFAULT_SETTINGS["main_sectors"])
+CITIES = [c for c in DEFAULT_SETTINGS["locations"] if c in CITY_OPTIONS]
 EXTRA_COMPANIES = [
     # {"name": "Company Name", "website": "https://company.com", "domain": "bioinformatics", "type": "startup"},
 ]
@@ -140,5 +192,8 @@ AI_PLATFORMS = [
 
 # ============================ RUN LIMITS (free tiers) ============================
 GIG_AI_NOTES_PER_RUN = 15      # AI summaries + proposal drafts for the best new gigs per run
+ROLE_SEARCHES_PER_RUN = 16     # public job-page searches per role-radar run (rotates through roles × sites × cities)
+ROLE_ALERT_EMAILS_PER_RUN = 25 # job-alert emails read per run (LinkedIn, Naukri, Internshala, ...)
+ROLE_MAX_AGE_DAYS = 21
 DIGEST_TOP_GIGS = 7
 DIGEST_HOUR_IST = 8            # the run closest after this hour sends the daily email

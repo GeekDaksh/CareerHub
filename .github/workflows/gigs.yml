@@ -1,5 +1,6 @@
-name: Gig radar
-# 4 times a day (08:15, 14:15, 20:15, 02:15 IST). The 08:15 run also sends the morning email.
+name: Gig + job radar
+# 4 times a day (08:15, 14:15, 20:15, 02:15 IST): freelance gigs AND entry-level jobs.
+# The 08:15 run also sends the morning email.
 on:
   schedule:
     - cron: "45 2,8,14,20 * * *"
@@ -21,6 +22,8 @@ jobs:
       GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
       GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
       DIGEST_TO: ${{ secrets.DIGEST_TO }}
+      SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -33,9 +36,14 @@ jobs:
       - run: python -m common.hfstore pull
       - name: Find gigs
         run: python -m gigs.radar
+      - name: Find entry-level jobs (alerts, careers pages, boards, job pages)
+        run: python -m roles.radar
+        continue-on-error: true
       - name: Morning email
         run: python -m notify.digest
         continue-on-error: true
       - name: Save
         if: always()
-        run: python -m common.hfstore push gigs
+        run: |
+          python -m common.hfstore push gigs
+          python -m common.hfstore push roles

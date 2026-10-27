@@ -37,8 +37,11 @@ def main(ensure_only=False):
     api.add_space_variable(space, "GITHUB_REPO", os.environ.get("GITHUB_REPOSITORY", ""))
 
     with tempfile.TemporaryDirectory() as tmp:
-        shutil.copytree(os.path.join(ROOT, "app"), tmp, dirs_exist_ok=True)   # incl. .streamlit/ theme
+        shutil.copytree(os.path.join(ROOT, "app"), tmp, dirs_exist_ok=True)   # server.py + static/ page
         shutil.copy(os.path.join(ROOT, "config.py"), tmp)
+        os.makedirs(os.path.join(tmp, "common"), exist_ok=True)
+        for f in ("__init__.py", "settings.py", "apply.py", "trust.py"):          # shared logic the server needs
+            shutil.copy(os.path.join(ROOT, "common", f), os.path.join(tmp, "common", f))
         api.upload_folder(folder_path=tmp, repo_id=space, repo_type="space", commit_message="deploy from GitHub")
 
     url = f"https://huggingface.co/spaces/{space}"

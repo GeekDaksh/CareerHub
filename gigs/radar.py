@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as C  # noqa: E402
 from common import llm  # noqa: E402
 from gigs import sources as S  # noqa: E402
+from common import levels, settings as SETTINGS, trust  # noqa: E402
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
 GDIR = os.path.join(DATA_DIR, "gigs")
@@ -56,7 +57,7 @@ SCAM = [
     (r"send (?:me |us )?your (?:bank|card|otp|password|aadhaar|pan)", "asks for bank / ID details"),
     (r"free (?:sample|test) (?:work|project) (?:of|for) (?:the )?(?:full|whole|entire)", "wants the full job free as a 'test'"),
 ]
-GIG_TYPES = {"freelance", "contract", "part-time", "internship"}
+GIG_TYPES = {"freelance", "contract", "part-time"}   # internships / full-time roles live on the Career side
 MY_WORDS = sorted({w.lower() for w in C.PROFILE["skills"]} |
                   {w for w in C.GIG_CATEGORIES["tech"]["words"]} |
                   {w for w in C.GIG_CATEGORIES["ai_tasks"]["words"]})
@@ -98,8 +99,13 @@ def category(g):
 
 
 def scam_flags(g):
+    """Shared scam shield (common/trust.py) + gig-specific rules."""
     text = f"{g['title']} {g.get('desc', '')}"
-    return [label for pat, label in SCAM if re.search(pat, text, re.I)]
+    out = trust.scam_reasons(text)
+    d = trust.domain(g.get("url"))
+    if trust.in_set(d, trust.SHORTENERS) or d.endswith(trust.BAD_TLDS):
+        out.append("suspicious link")
+    return list(dict.fromkeys(out))
 
 
 def inr(v, cur):
@@ -240,9 +246,10 @@ def ai_note(g):
 
 # ---------------------------------------------------------------- main
 def collect(state, health):
-    q = C.GIG_QUERIES
+    chosen = SETTINGS.load(DATA_DIR)["gig_types"]   # your gig types from Settings
+    words = [w for t in chosen for w in C.GIG_QUERIES.get(t, [])]
     jobs = [
-        ("Freelancer.com", lambda: S.freelancer(q["tech"] + q["content"] + q["marketing"] + q["ai_tasks"])),
+        ("Freelancer.com", lambda: S.freelancer(words)),
         ("RemoteOK", S.remoteok),
         ("Himalayas", S.himalayas),
         ("Jobicy", S.jobicy),
@@ -299,8 +306,13 @@ def run():
         g["scam"] = scam_flags(g)
         g["pay_inr"] = pay_inr(g)
         g["score"], g["why"] = score(g)
+        g["level"] = levels.level(g["title"], g.get("desc"))
+        board = g["source"] not in ("Freelancer.com", "Hacker News")
+        g["trust"] = trust.check({**g, "source_kind": "freelance" if not board else "board"})
         g["visible"] = (g["eligibility"] != "blocked" and not g["scam"] and g["category"] != "other"
-                        and (C.SHOW_FULL_TIME or g["work_type"] != "full-time")
+                        # job boards: only contract / part-time / freelance here; full-time roles go to Career
+                        and (not board or g["work_type"] in GIG_TYPES)
+                        and not (board and g["level"] == "senior")
                         and not (g["pay_type"] == "hourly" and g["pay_inr"] and g["pay_inr"] < C.MIN_HOURLY_INR))
         gigs[g["id"]] = g
 

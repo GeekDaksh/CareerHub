@@ -51,10 +51,14 @@ def build(state, now=None):
                  if p["priority"] < 9 and st(f"platform:{p['name']}", "not applied") == "not applied"), None)
     month = datetime.now(IST).strftime("%Y-%m")
     earned = sum(float(e.get("amount_inr", 0)) for e in tracker.get("earnings", []) if str(e.get("date", "")).startswith(month))
-    return top, fresh, cos, plat, earned
+    roles = [r for r in jload("roles/roles.json", {}).get("roles", [])
+             if r.get("location_ok", True) and st(f"role:{r['id']}") not in ("hidden", "applied", "interview", "offer", "rejected")]
+    new_roles = [r for r in roles if (r.get("first_seen") or 0) > since]
+    jobs = (new_roles or roles)[:3]
+    return top, fresh, cos, plat, earned, jobs
 
 
-def render(top, fresh, cos, plat, earned, space_url):
+def render(top, fresh, cos, plat, earned, space_url, jobs=()):
     e = html.escape
     lo, hi = C.MONTHLY_GOAL_INR
     gig_html = ""
@@ -75,12 +79,18 @@ def render(top, fresh, cos, plat, earned, space_url):
         f"<li style='margin-bottom:8px'><b>{e(r['company'])}</b> — {e(r.get('contact_1') or 'see app')} "
         f"({e(r.get('contact_1_role') or '')}) <span style='color:#5b6170'>{e(r.get('contact_1_email') or '')}</span><br>"
         f"<span style='color:#5b6170;font-size:13px'>💡 {e(r.get('talking_point') or '')}</span></li>" for r in cos)
+    badge = {"verified": "✓ verified source", "likely": "known platform", "unverified": "check before applying"}
+    job_html = "".join(
+        f"<li style='margin-bottom:8px'><a href='{e(r['url'])}' style='color:#2b4c9b;font-weight:600;text-decoration:none'>{e(r['title'])}</a>"
+        f" — {e(r.get('company') or '')} <span style='color:#5b6170'>· {e(r.get('location') or '')} · {e(r.get('platform') or '')} · "
+        f"{badge.get((r.get('trust') or {}).get('verdict'), '')}</span></li>" for r in jobs)
     plat_html = (f"<p style='margin:0'>Apply to <a href='{e(plat['url'])}'>{e(plat['name'])}</a> "
                  f"({e(plat['fit'])}, {e(plat['pay'])}). It takes about 20 minutes.</p>") if plat else ""
     return f"""<div style="font-family:Inter,Segoe UI,Arial,sans-serif;max-width:620px;margin:auto;color:#22262f;background:#fbfbfd;padding:24px">
 <h2 style="margin:0 0 4px 0">Good morning, {e(C.PROFILE['first_name'])} ☀️</h2>
 <p style="margin:0 0 18px 0;color:#5b6170">{len(fresh)} new gigs since yesterday. Earned this month: ₹{earned:,.0f} (goal ₹{lo:,}–{hi:,}).</p>
-<h3 style="margin:16px 0 4px 0">💸 Best gigs to bid on</h3><table style="width:100%;border-collapse:collapse">{gig_html}</table>
+{('<h3 style="margin:16px 0 6px 0">💼 Entry-level jobs to apply to</h3><ul style="padding-left:18px;margin:0">' + job_html + '</ul>') if job_html else ''}
+<h3 style="margin:22px 0 4px 0">💸 Best gigs to bid on</h3><table style="width:100%;border-collapse:collapse">{gig_html}</table>
 {('<h3 style="margin:22px 0 6px 0">🏢 Email one of these startups</h3><ul style="padding-left:18px;margin:0">' + co_html + '</ul>') if co_html else ''}
 {('<h3 style="margin:22px 0 6px 0">🤖 This week</h3>' + plat_html) if plat_html else ''}
 <p style="margin-top:24px"><a href="{e(space_url)}" style="background:#2b4c9b;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open Career Hub</a></p>
@@ -110,7 +120,7 @@ def main(force=False):
     if not force and (now_ist.hour < C.DIGEST_HOUR_IST or state.get("digest_last_day") == today):
         print("digest: not due yet")
         return
-    top, fresh, cos, plat, earned = build(state)
+    top, fresh, cos, plat, earned, jobs = build(state)
     space_url = os.environ.get("SPACE_URL")
     if not space_url and os.environ.get("HF_TOKEN"):
         try:
@@ -119,7 +129,7 @@ def main(force=False):
         except Exception:
             pass
     space_url = space_url or "https://huggingface.co/spaces"
-    body = render(top, fresh, cos, plat, earned, space_url)
+    body = render(top, fresh, cos, plat, earned, space_url, jobs)
     subject = f"🎯 {len(fresh)} new gigs · {now_ist.strftime('%d %b')}" + (f" · top: {top[0]['title'][:45]}" if top else "")
     if send(body, subject):
         state["digest_last_day"], state["digest_last_ts"] = today, time.time()

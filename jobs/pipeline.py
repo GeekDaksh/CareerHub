@@ -61,7 +61,7 @@ Generated from the Colab notebook. Edit settings in config.py, not here.
 # ----------------------------------------------------------------------
 # CELL 1 — Install libraries, read keys, connect Google Drive
 
-import os, json, re, time, random
+import os, json, re, time, random, html
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, urljoin
@@ -221,8 +221,16 @@ RETRY_FAILED = False         # True = Cell 5 retries companies that failed last 
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as _cfg
-SEARCH_TERMS, TOP_DOMAINS, CITIES, EXTRA_COMPANIES = _cfg.SEARCH_TERMS, _cfg.TOP_DOMAINS, _cfg.CITIES, _cfg.EXTRA_COMPANIES
+from common import settings as _settings
+_S = _settings.load(os.environ.get("DATA_DIR", "data"))        # your picks from the app's Settings tab
+SEARCH_TERMS = _settings.search_terms(_S)                      # chosen sectors
+TOP_DOMAINS = list(_S["main_sectors"])                         # searched in depth, ranked first
+CITIES = _settings.cities(_S) or ["Bengaluru"]                 # chosen cities
+EXTRA_COMPANIES = _cfg.EXTRA_COMPANIES
 PRIORITY = {d: (1 if d in TOP_DOMAINS else 2) for d in SEARCH_TERMS}
+INTEREST_WORDS = {k: v for k, v in INTEREST_WORDS.items() if k in SEARCH_TERMS}
+PREFERRED_ROLES = sorted(set(_settings.role_words(_S)) | {"intern", "internship", "graduate", "fresher", "trainee",
+                                                           "junior", "entry level", "associate"})
 PROFILE.update({"name": _cfg.PROFILE["first_name"], "intro": _cfg.PROFILE["intro"],
                 "skills": _cfg.PROFILE["skills"], "projects": _cfg.PROFILE["projects"]})
 DISCOVERY_REFRESH_DAYS = 30  # re-run discovery searches monthly so new startups keep appearing
@@ -978,7 +986,7 @@ def merge_companies(items):
         m["india"] = is_india(m.get("country"), m.get("city"), m.get("website"))
     return out
 
-all_items = (found["companies"] + yc_items
+all_items = ([c for c in found["companies"] + yc_items if c.get("domain") in SEARCH_TERMS]   # only chosen sectors
              + [{**c, "source_url": "added by you"} for c in EXTRA_COMPANIES])
 companies = pd.DataFrame(merge_companies(all_items))
 assert len(companies), "No companies found. Check that searches returned results (see Step A)."
@@ -1297,21 +1305,24 @@ ROLE_RE = re.compile(r"\b(?:" + "|".join(re.escape(k) for k in PREFERRED_ROLES) 
 def fetch_ats(kind, slug):
     jobs = []
     if kind == "greenhouse":
-        d = get_json(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs") or {}
+        d = get_json(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs", params={"content": "true"}) or {}
         for j in d.get("jobs", []):
             jobs.append({"title": j.get("title"), "location": (j.get("location") or {}).get("name"),
-                         "url": j.get("absolute_url"), "posted": j.get("updated_at")})
+                         "url": j.get("absolute_url"), "posted": j.get("updated_at"),
+                         "desc": page_text(html.unescape(j.get("content") or ""), 1500) if j.get("content") else ""})
     elif kind == "lever":
         d = get_json(f"https://api.lever.co/v0/postings/{slug}", params={"mode": "json"}) or []
         for j in d if isinstance(d, list) else []:
             cat = j.get("categories") or {}
             jobs.append({"title": j.get("text"), "location": cat.get("location"),
-                         "url": j.get("hostedUrl"), "posted": j.get("createdAt")})
+                         "url": j.get("hostedUrl"), "posted": j.get("createdAt"),
+                         "desc": str(j.get("descriptionPlain") or "")[:1500]})
     elif kind == "ashby":
         d = get_json(f"https://api.ashbyhq.com/posting-api/job-board/{slug}") or {}
         for j in d.get("jobs", []):
             jobs.append({"title": j.get("title"), "location": j.get("location"),
-                         "url": j.get("jobUrl"), "posted": j.get("publishedAt")})
+                         "url": j.get("jobUrl"), "posted": j.get("publishedAt"),
+                         "desc": str(j.get("descriptionPlain") or "")[:1500]})
     elif kind == "workable":
         d = get_json(f"https://apply.workable.com/api/v1/widget/accounts/{slug}") or {}
         for j in d.get("jobs", []):
@@ -1340,7 +1351,7 @@ for name, p in profiles.items():
                          "url": j.get("url") or p["crawl"].get("careers_url"), "posted": None,
                          "source": "careers page"})
 
-jobs = pd.DataFrame(job_rows, columns=["company", "title", "location", "url", "posted", "source"])
+jobs = pd.DataFrame(job_rows, columns=["company", "title", "location", "url", "posted", "source", "desc"])
 if len(jobs):
     jobs = jobs.dropna(subset=["title"]).drop_duplicates(["company", "title", "location"])
     jobs["relevant"] = jobs["title"].astype(str).str.contains(ROLE_RE)
