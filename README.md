@@ -45,3 +45,31 @@ From then on it runs, refreshes and redeploys by itself.
 - **Sleep:** after 2 days with no visits, the app sleeps. Opening the link wakes it in about a minute.
 - **Change sectors, roles, cities or gig types** in the app's ⚙ Settings. **Change your skills or projects** in `config.py`; saving it redeploys automatically.
 - **A broken source** shows as down in the Status tab. The others keep working, and its last results are kept.
+- **Teach the scam shield:** press **Report scam** on a post (it's hidden at once), **Not a scam** on a blocked post (it comes back with a warning), or **It's senior / It's entry** on a job. The Safety tab shows what it learned. Every change is versioned. To undo, run `DATA_DIR=data python -m common.feedback rollback <version>` after `python -m common.hfstore pull`.
+
+---
+
+## How good is the filtering? (measured, not guessed)
+
+The two filters were tested on **EMSCAD**, a public set of 17,880 real job ads (866 confirmed scams). The ads were split 60 % train and 40 % test. Tuning used train only. The test split was opened **once**, at the end (`eval/test_runs.log` has 1 line).
+
+| On the test split | Before | Final | Plain meaning |
+|---|---|---|---|
+| Scams blocked | 8.2 % | **12.2 %** | about 1 in 8 scams caught by the text rules alone |
+| Real jobs wrongly blocked | 1.0 % | **0.24 %** | about 1 in 400 |
+| Senior jobs that still reach you | 27.8 % | **25.1 %** | most are "level not stated" (shown with a "check level" tag) |
+| Entry jobs wrongly hidden | 16.0 % | 16.0 % | no change |
+
+**Honest catch:** EMSCAD repeats scam campaigns. Counting only test scams whose campaign never appears in train, the text rules catch **4.9 %**. The rules are a last line of defence. Most of the safety comes from *where* a post comes from: official careers pages, DKIM-checked alert emails, known platforms, and your own reports. Full details are in [`REPORT.md`](REPORT.md) and [`eval/REDTEAM.md`](eval/REDTEAM.md).
+
+## For developers
+
+| Command | What it does | Time |
+|---|---|---|
+| `bash tests/run_all.sh` | every test: gates, feedback learning, both radars, deploy, 53 attack tests | ~3 min |
+| `bash eval/fetch_emscad.sh` | download EMSCAD (pinned SHA-256) to `eval/.data/` | ~10 s |
+| `python -m eval.run_eval` | metrics on **train**, with 95 % ranges, change vs baseline and calibration | ~30 s |
+| `python -m eval.loop` | the improvement loop (train only, resumable, logged in `eval/LOOP.md`) | ~6 min |
+| `python -m eval.run_eval --final` | the **test** split, logged. Already run once; don't re-run to tune. | ~30 s |
+
+Layout: `config.py` (every setting, checked at start: unknown keys are an error) · `common/` (scam shield `trust.py`, fresher filter `levels.py`, output gates `gates.py`, feedback learning `feedback.py`) · `gigs/`, `roles/`, `jobs/` (the three collectors) · `app/` (FastAPI + one-page UI) · `eval/` (harness, loop, objective, red-team report) · `tests/`.
