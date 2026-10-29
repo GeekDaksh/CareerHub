@@ -50,7 +50,7 @@ h1,h2,h3,h4{margin:0;font-weight:500}
 .ghost.on{border-color:var(--paper);background:var(--s2)}
 .primary{background:var(--paper);color:var(--bg);border:0;border-radius:999px;padding:9px 18px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .primary:hover{background:#fff}
-.mini{background:none;border:1px solid var(--line2);border-radius:999px;padding:4px 11px;font-size:13px;color:var(--dim);text-decoration:none}
+.mini{white-space:nowrap;background:none;border:1px solid var(--line2);border-radius:999px;padding:4px 11px;font-size:13px;color:var(--dim);text-decoration:none}
 .mini:hover{border-color:var(--paper);color:var(--paper)}
 .mini.warnbtn{color:var(--D);border-color:rgba(244,159,146,.45)}.mini.warnbtn:hover{border-color:var(--D);color:var(--D)}
 .mini.on{background:var(--s2);color:var(--paper);border-color:var(--cream);font-weight:600}
@@ -631,7 +631,7 @@ function lessonsBlock() {
   const L = D.lessons || {};
   const doms = Object.entries(L.block_domains || {});
   const rf = Object.entries(L.rule_feedback || {});
-  return `<div class="bar-head"><h3>What the shield learned from you</h3><span class="faint small">version ${esc(L.version || 0)} · ${esc(L.reports || 0)} reports</span></div>
+  return `<div class="bar-head"><h3>What the shield learned from you</h3><span class="faint small">version ${esc(L.version || 0)} · ${esc(L.reports || 0)} report${L.reports === 1 ? "" : "s"}</span></div>
     <p class="faint small">"Report scam" hides a post at once. A whole website is blocked only after you report ${2} different posts from it, you never marked one safe, and blocking it wouldn't hide verified jobs. Every change is versioned and can be undone.</p>
     <div class="grid2"><article class="card"><h4>Blocked websites (${doms.length})</h4>${doms.map(([d, v]) => `<p class="flag warn">${esc(d)} · ${esc(v.votes)} reports</p>`).join("") || '<p class="faint small">None yet.</p>'}
       ${(L.pending || []).map((p) => `<p class="flag">${esc(p.domain)}: ${esc(p.why)}</p>`).join("")}</article>
