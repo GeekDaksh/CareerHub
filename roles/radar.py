@@ -25,7 +25,7 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as C  # noqa: E402
 from common import apply as AP  # noqa: E402
-from common import levels, llm, settings as SETTINGS, trust  # noqa: E402
+from common import gates, levels, llm, settings as SETTINGS, trust  # noqa: E402
 from common.search import Searcher  # noqa: E402
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
@@ -418,13 +418,16 @@ def run():
     prev_blocked = load("roles.json", {}).get("blocked", [])
     urls = {b["url"] for b in blocked}
     blocked = blocked + [b for b in prev_blocked if b["url"] not in urls]   # keep history for the Safety tab
-    save("roles.json", {"updated": NOW, "roles": ordered, "blocked": blocked[:200], "senior_hidden": senior})
+    saved = gates.guard("roles", ordered, len(old), health, NOW)
+    if saved:
+        save("roles.json", {"updated": NOW, "roles": ordered, "blocked": blocked[:200], "senior_hidden": senior})
     save("state.json", state)
     save("health.json", health)
     by = {}
     for r in ordered:
         by[r["source_kind"]] = by.get(r["source_kind"], 0) + 1
-    print(f"roles: {len(ordered)} entry-level · {senior} senior hidden · {len(blocked)} blocked as risky · by source {by}")
+    print(f"roles: {len(ordered)} entry-level · {senior} senior hidden · {len(blocked)} blocked as risky · by source {by}"
+          + ("" if saved else " · NOT SAVED (output check failed, last good list kept)"))
     return ordered
 
 

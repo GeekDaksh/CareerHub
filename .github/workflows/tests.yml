@@ -1,0 +1,20 @@
+name: Tests
+# Runs every test on each push, so a broken change shows a red mark on GitHub before it can reach the app.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt -r app/requirements.txt httpx
+      - run: bash eval/fetch_emscad.sh
+      - run: bash tests/run_all.sh

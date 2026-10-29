@@ -1,0 +1,529 @@
+{
+ "GenoMind AI": {
+  "searched": "2026-10-27",
+  "found": [
+   {
+    "name": "Priya Sharma",
+    "role": "Co-founder & CEO",
+    "type": "official site",
+    "url": "https://genomind.ai/about",
+    "linkedin": null,
+    "email": null
+   },
+   {
+    "name": "Amit Rao",
+    "role": "Head of Research",
+    "type": "official site",
+    "url": "https://genomind.ai/about",
+    "linkedin": null,
+    "email": null
+   },
+   {
+    "name": "Priya Sharma",
+    "role": "Founder",
+    "type": "structured data",
+    "url": "https://genomind.ai",
+    "linkedin": null,
+    "email": null
+   },
+   {
+    "name": "Kavya Iyer",
+    "role": "Head of Bioinformatics",
+    "type": "structured data",
+    "url": "https://genomind.ai",
+    "linkedin": null,
+    "email": null
+   },
+   {
+    "name": "Priya Sharma",
+    "role": null,
+    "type": "structured data",
+    "url": "https://genomind.ai",
+    "linkedin": null,
+    "email": null
+   },
+   {
+    "name": "Priya Sharma",
+    "role": "Co-founder & CEO",
+    "type": "LinkedIn headline",
+    "url": "https://www.linkedin.com/in/priyasharma",
+    "linkedin": "https://www.linkedin.com/in/priyasharma"
+   },
+   {
+    "name": "Rahul Verma",
+    "role": "CTO",
+    "type": "LinkedIn headline",
+    "url": "https://www.linkedin.com/in/rahul-verma-123",
+    "linkedin": "https://www.linkedin.com/in/rahul-verma-123"
+   },
+   {
+    "name": "Meera Nair",
+    "role": "Talent Acquisition Lead",
+    "type": "LinkedIn headline",
+    "url": "https://www.linkedin.com/in/meera-nair",
+    "linkedin": "https://www.linkedin.com/in/meera-nair"
+   },
+   {
+    "name": "Priya Sharma",
+    "role": "Director (company registry)",
+    "type": "company registry",
+    "url": "https://www.zaubacorp.com/company/GENOMIND-AI"
+   },
+   {
+    "name": "Amit Rao",
+    "role": "Director (company registry)",
+    "type": "company registry",
+    "url": "https://www.zaubacorp.com/company/GENOMIND-AI"
+   },
+   {
+    "name": "Priya Sharma",
+    "role": "co-founder and CEO",
+    "type": "news",
+    "url": "https://inc42.com/genomind"
+   },
+   {
+    "name": "Amit Rao",
+    "role": "Head of Research",
+    "type": "Tomba",
+    "url": "tomba.io",
+    "linkedin": null,
+    "email": "amit@genomind.ai",
+    "conf": 92
+   },
+   {
+    "name": "Neha Gupta",
+    "role": "Talent Acquisition Lead",
+    "type": "Tomba",
+    "url": "tomba.io",
+    "linkedin": null,
+    "email": "neha@genomind.ai",
+    "conf": 88
+   }
+  ],
+  "evidence": [
+   {
+    "email": "rahul@genomind.ai",
+    "source": "web search",
+    "url": "https://conf.example.org/speakers"
+   }
+  ],
+  "finder_done": true,
+  "finder_patterns": {
+   "tomba.io": "{first}"
+  },
+  "accept_all": false,
+  "people": [
+   {
+    "name": "Priya Sharma",
+    "roles": [
+     [
+      "official site",
+      "Co-founder & CEO"
+     ],
+     [
+      "structured data",
+      "Founder"
+     ],
+     [
+      "LinkedIn headline",
+      "Co-founder & CEO"
+     ],
+     [
+      "company registry",
+      "Director (company registry)"
+     ],
+     [
+      "news",
+      "co-founder and CEO"
+     ]
+    ],
+    "linkedin": "https://www.linkedin.com/in/priyasharma",
+    "emails": [],
+    "sources": [
+     {
+      "type": "official site",
+      "url": "https://genomind.ai/about"
+     },
+     {
+      "type": "structured data",
+      "url": "https://genomind.ai"
+     },
+     {
+      "type": "LinkedIn headline",
+      "url": "https://www.linkedin.com/in/priyasharma"
+     },
+     {
+      "type": "company registry",
+      "url": "https://www.zaubacorp.com/company/GENOMIND-AI"
+     },
+     {
+      "type": "news",
+      "url": "https://inc42.com/genomind"
+     }
+    ],
+    "role": "Co-founder & CEO",
+    "category": "Founder / CEO",
+    "evidence_score": 11,
+    "person_confidence": "High",
+    "source_types": [
+     "official site",
+     "structured data",
+     "LinkedIn headline",
+     "company registry",
+     "news"
+    ],
+    "key_contact": true
+   },
+   {
+    "name": "Amit Rao",
+    "roles": [
+     [
+      "official site",
+      "Head of Research"
+     ],
+     [
+      "company registry",
+      "Director (company registry)"
+     ],
+     [
+      "Tomba",
+      "Head of Research"
+     ]
+    ],
+    "linkedin": null,
+    "emails": [
+     {
+      "email": "amit@genomind.ai",
+      "source": "Tomba",
+      "url": "tomba.io",
+      "conf": 92
+     }
+    ],
+    "sources": [
+     {
+      "type": "official site",
+      "url": "https://genomind.ai/about"
+     },
+     {
+      "type": "company registry",
+      "url": "https://www.zaubacorp.com/company/GENOMIND-AI"
+     },
+     {
+      "type": "Tomba",
+      "url": "tomba.io"
+     }
+    ],
+    "role": "Head of Research",
+    "category": "AI / Research lead",
+    "evidence_score": 6,
+    "person_confidence": "High",
+    "source_types": [
+     "official site",
+     "Tomba",
+     "company registry"
+    ],
+    "key_contact": true
+   },
+   {
+    "name": "Kavya Iyer",
+    "roles": [
+     [
+      "structured data",
+      "Head of Bioinformatics"
+     ]
+    ],
+    "linkedin": null,
+    "emails": [],
+    "sources": [
+     {
+      "type": "structured data",
+      "url": "https://genomind.ai"
+     }
+    ],
+    "role": "Head of Bioinformatics",
+    "category": "AI / Research lead",
+    "evidence_score": 3,
+    "person_confidence": "High",
+    "source_types": [
+     "structured data"
+    ],
+    "key_contact": true
+   },
+   {
+    "name": "Rahul Verma",
+    "roles": [
+     [
+      "LinkedIn headline",
+      "CTO"
+     ]
+    ],
+    "linkedin": "https://www.linkedin.com/in/rahul-verma-123",
+    "emails": [],
+    "sources": [
+     {
+      "type": "LinkedIn headline",
+      "url": "https://www.linkedin.com/in/rahul-verma-123"
+     }
+    ],
+    "role": "CTO",
+    "category": "CTO / Engineering lead",
+    "evidence_score": 3,
+    "person_confidence": "High",
+    "source_types": [
+     "LinkedIn headline"
+    ],
+    "key_contact": true
+   },
+   {
+    "name": "Meera Nair",
+    "roles": [
+     [
+      "LinkedIn headline",
+      "Talent Acquisition Lead"
+     ]
+    ],
+    "linkedin": "https://www.linkedin.com/in/meera-nair",
+    "emails": [],
+    "sources": [
+     {
+      "type": "LinkedIn headline",
+      "url": "https://www.linkedin.com/in/meera-nair"
+     }
+    ],
+    "role": "Talent Acquisition Lead",
+    "category": "Hiring / HR",
+    "evidence_score": 3,
+    "person_confidence": "High",
+    "source_types": [
+     "LinkedIn headline"
+    ],
+    "key_contact": true
+   },
+   {
+    "name": "Neha Gupta",
+    "roles": [
+     [
+      "Tomba",
+      "Talent Acquisition Lead"
+     ]
+    ],
+    "linkedin": null,
+    "emails": [
+     {
+      "email": "neha@genomind.ai",
+      "source": "Tomba",
+      "url": "tomba.io",
+      "conf": 88
+     }
+    ],
+    "sources": [
+     {
+      "type": "Tomba",
+      "url": "tomba.io"
+     }
+    ],
+    "role": "Talent Acquisition Lead",
+    "category": "Hiring / HR",
+    "evidence_score": 2,
+    "person_confidence": "Medium",
+    "source_types": [
+     "Tomba"
+    ],
+    "key_contact": true
+   }
+  ]
+ },
+ "ShipFlow": {
+  "searched": "2026-10-27",
+  "found": [
+   {
+    "name": "Ankit Mehta",
+    "role": "Founder",
+    "type": "LinkedIn headline",
+    "url": "https://www.linkedin.com/in/ankitmehta",
+    "linkedin": "https://www.linkedin.com/in/ankitmehta"
+   },
+   {
+    "name": "Divya Rao",
+    "role": "CTO",
+    "type": "LinkedIn experience",
+    "url": "https://www.linkedin.com/in/divyarao",
+    "linkedin": "https://www.linkedin.com/in/divyarao"
+   }
+  ],
+  "evidence": [],
+  "finder_done": true,
+  "finder_patterns": {},
+  "accept_all": false,
+  "people": [
+   {
+    "name": "Ankit Mehta",
+    "roles": [
+     [
+      "LinkedIn headline",
+      "Founder"
+     ]
+    ],
+    "linkedin": "https://www.linkedin.com/in/ankitmehta",
+    "emails": [],
+    "sources": [
+     {
+      "type": "LinkedIn headline",
+      "url": "https://www.linkedin.com/in/ankitmehta"
+     }
+    ],
+    "role": "Founder",
+    "category": "Founder / CEO",
+    "evidence_score": 3,
+    "person_confidence": "High",
+    "source_types": [
+     "LinkedIn headline"
+    ],
+    "key_contact": true
+   },
+   {
+    "name": "Divya Rao",
+    "roles": [
+     [
+      "LinkedIn experience",
+      "CTO"
+     ]
+    ],
+    "linkedin": "https://www.linkedin.com/in/divyarao",
+    "emails": [],
+    "sources": [
+     {
+      "type": "LinkedIn experience",
+      "url": "https://www.linkedin.com/in/divyarao"
+     }
+    ],
+    "role": "CTO",
+    "category": "CTO / Engineering lead",
+    "evidence_score": 2,
+    "person_confidence": "Medium",
+    "source_types": [
+     "LinkedIn experience"
+    ],
+    "key_contact": true
+   }
+  ]
+ },
+ "LabLoop": {
+  "searched": "2026-10-27",
+  "found": [
+   {
+    "name": "Sneha Kulkarni",
+    "role": "Founder & CEO",
+    "type": "official site",
+    "url": "https://labloop.ai/team",
+    "linkedin": null,
+    "email": null
+   },
+   {
+    "name": "Vikram Shah",
+    "role": "CTO",
+    "type": "official site",
+    "url": "https://labloop.ai/team",
+    "linkedin": null,
+    "email": null
+   }
+  ],
+  "evidence": [],
+  "finder_done": true,
+  "finder_patterns": {},
+  "accept_all": false,
+  "people": [
+   {
+    "name": "Sneha Kulkarni",
+    "roles": [
+     [
+      "official site",
+      "Founder & CEO"
+     ]
+    ],
+    "linkedin": null,
+    "emails": [],
+    "sources": [
+     {
+      "type": "official site",
+      "url": "https://labloop.ai/team"
+     }
+    ],
+    "role": "Founder & CEO",
+    "category": "Founder / CEO",
+    "evidence_score": 3,
+    "person_confidence": "High",
+    "source_types": [
+     "official site"
+    ],
+    "key_contact": true
+   },
+   {
+    "name": "Vikram Shah",
+    "roles": [
+     [
+      "official site",
+      "CTO"
+     ]
+    ],
+    "linkedin": null,
+    "emails": [],
+    "sources": [
+     {
+      "type": "official site",
+      "url": "https://labloop.ai/team"
+     }
+    ],
+    "role": "CTO",
+    "category": "CTO / Engineering lead",
+    "evidence_score": 3,
+    "person_confidence": "High",
+    "source_types": [
+     "official site"
+    ],
+    "key_contact": true
+   }
+  ]
+ },
+ "TCS": {
+  "searched": "2026-10-27",
+  "found": [
+   {
+    "name": "Arjun Patel",
+    "role": "Head of AI Research",
+    "type": "LinkedIn headline",
+    "url": "https://www.linkedin.com/in/arjunp",
+    "linkedin": "https://www.linkedin.com/in/arjunp"
+   }
+  ],
+  "evidence": [],
+  "finder_done": true,
+  "people": [
+   {
+    "name": "Arjun Patel",
+    "roles": [
+     [
+      "LinkedIn headline",
+      "Head of AI Research"
+     ]
+    ],
+    "linkedin": "https://www.linkedin.com/in/arjunp",
+    "emails": [],
+    "sources": [
+     {
+      "type": "LinkedIn headline",
+      "url": "https://www.linkedin.com/in/arjunp"
+     }
+    ],
+    "role": "Head of AI Research",
+    "category": "AI / Research lead",
+    "evidence_score": 3,
+    "person_confidence": "High",
+    "source_types": [
+     "LinkedIn headline"
+    ],
+    "key_contact": true
+   }
+  ]
+ }
+}

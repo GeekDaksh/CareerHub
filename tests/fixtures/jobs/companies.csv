@@ -1,0 +1,5 @@
+name,domains,priority,type,india,city,country,website,what_they_do,sources
+GenoMind AI,bioinformatics,1,startup,True,Bengaluru,India,https://genomind.ai,AI for genomics,https://seedtable.com/bio
+ShipFlow,supply chain,1,startup,True,Pune,India,,logistics,https://startuptalky.com/pune
+LabLoop,SDL,1,startup,True,Bengaluru,India,https://labloop.ai,Lab automation for chemistry labs,https://www.ycombinator.com/companies/labloop
+TCS,bioinformatics,1,corporate,True,Mumbai,India,,IT services,https://seedtable.com/bio

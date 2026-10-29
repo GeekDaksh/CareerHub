@@ -1,0 +1,23 @@
+{
+ "genomind.ai": {
+  "has_mx": true,
+  "provider": "Google Workspace",
+  "hosts": [
+   "aspmx.l.google.com"
+  ]
+ },
+ "shipflow.in": {
+  "has_mx": true,
+  "provider": "Zoho Mail",
+  "hosts": [
+   "mx.zoho.in"
+  ]
+ },
+ "labloop.ai": {
+  "has_mx": true,
+  "provider": "Google Workspace",
+  "hosts": [
+   "aspmx.l.google.com"
+  ]
+ }
+}

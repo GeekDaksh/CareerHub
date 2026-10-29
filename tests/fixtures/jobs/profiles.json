@@ -1,0 +1,309 @@
+{
+ "GenoMind AI": {
+  "status": "ok",
+  "input": {
+   "name": "GenoMind AI",
+   "domains": "bioinformatics",
+   "priority": 1,
+   "type": "startup",
+   "india": true,
+   "city": "Bengaluru",
+   "country": "India",
+   "website": "https://genomind.ai",
+   "what_they_do": "AI for genomics",
+   "sources": "https://seedtable.com/bio"
+  },
+  "website": "https://genomind.ai",
+  "crawl": {
+   "website": "https://genomind.ai",
+   "emails": {
+    "hello@genomind.ai": "https://genomind.ai",
+    "priya@genomind.ai": "https://genomind.ai",
+    "careers@genomind.ai": "https://genomind.ai"
+   },
+   "phones": [
+    "+91 80 1234 5678"
+   ],
+   "linkedin_company": "https://www.linkedin.com/company/genomind",
+   "github_org": "genomind",
+   "twitter": null,
+   "ats": [
+    "greenhouse:genomind"
+   ],
+   "job_links": [],
+   "careers_url": "https://genomind.ai/careers",
+   "contact_url": null,
+   "jsonld_people": [
+    {
+     "name": "Priya Sharma",
+     "role": "Founder",
+     "email": null,
+     "sameAs": [],
+     "url": "https://genomind.ai"
+    },
+    {
+     "name": "Kavya Iyer",
+     "role": "Head of Bioinformatics",
+     "email": null,
+     "sameAs": [],
+     "url": "https://genomind.ai"
+    },
+    {
+     "name": "Priya Sharma",
+     "role": null,
+     "email": null,
+     "sameAs": [],
+     "url": "https://genomind.ai"
+    }
+   ],
+   "jsonld_org": {
+    "name": "GenoMind AI",
+    "foundingDate": "2021"
+   }
+  },
+  "pages_read": [
+   "https://genomind.ai",
+   "https://genomind.ai/about",
+   "https://genomind.ai/careers"
+  ],
+  "search_sources": [
+   "https://inc42.com/genomind-series-a",
+   "https://yourstory.com/genomind"
+  ],
+  "profile": {
+   "official_name": "GenoMind AI",
+   "founded_year": 2021,
+   "hq_city": "Bengaluru",
+   "country": "India",
+   "is_startup": true,
+   "stage": "Series A",
+   "one_liner": "AI for genomics",
+   "what_they_do": "Deep learning for genomics and protein design.",
+   "products": [
+    {
+     "name": "GenoCore",
+     "description": "drug discovery platform",
+     "source": "https://genomind.ai"
+    }
+   ],
+   "research_and_discoveries": [
+    {
+     "item": "Nature paper on protein folding (2025)",
+     "source": "https://genomind.ai/about"
+    }
+   ],
+   "tech_and_methods": [
+    "deep learning",
+    "PyTorch",
+    "bayesian optimization"
+   ],
+   "funding": {
+    "total": "$5M",
+    "last_round": "Series A",
+    "last_round_amount": "$5M",
+    "last_round_date": "March 2026",
+    "investors": [
+     "Accel"
+    ],
+    "source": "https://inc42.com/genomind-series-a"
+   },
+   "funding_rounds": [
+    {
+     "round": "Series A",
+     "amount": "$5M",
+     "date": "2026-03",
+     "investors": [
+      "Accel"
+     ],
+     "source": "https://inc42.com/genomind-series-a"
+    }
+   ],
+   "people": [
+    {
+     "name": "Priya Sharma",
+     "role": "Co-founder & CEO",
+     "is_key_contact": true,
+     "linkedin": null,
+     "email": null,
+     "source": "https://genomind.ai/about"
+    },
+    {
+     "name": "Amit Rao",
+     "role": "Head of Research",
+     "is_key_contact": true,
+     "linkedin": null,
+     "email": null,
+     "source": "https://genomind.ai/about"
+    }
+   ],
+   "open_roles": [
+    {
+     "title": "Machine Learning Intern",
+     "location": "Bengaluru",
+     "url": null
+    }
+   ],
+   "contact": {
+    "general_email": "hello@genomind.ai",
+    "phone": null,
+    "address": null
+   }
+  },
+  "updated": "2026-10-27T18:26"
+ },
+ "ShipFlow": {
+  "status": "ok",
+  "input": {
+   "name": "ShipFlow",
+   "domains": "supply chain",
+   "priority": 1,
+   "type": "startup",
+   "india": true,
+   "city": "Pune",
+   "country": "India",
+   "website": null,
+   "what_they_do": "logistics",
+   "sources": "https://startuptalky.com/pune"
+  },
+  "website": "https://shipflow.in",
+  "crawl": {
+   "website": "https://shipflow.in",
+   "emails": {
+    "ankit.mehta@shipflow.in": "https://shipflow.in/contact",
+    "info@shipflow.in": "https://shipflow.in/contact"
+   },
+   "phones": [],
+   "linkedin_company": null,
+   "github_org": null,
+   "twitter": null,
+   "ats": [],
+   "job_links": [],
+   "careers_url": null,
+   "contact_url": "https://shipflow.in/contact",
+   "jsonld_people": [],
+   "jsonld_org": {}
+  },
+  "pages_read": [
+   "https://shipflow.in",
+   "https://shipflow.in/contact"
+  ],
+  "search_sources": [],
+  "profile": {
+   "official_name": "ShipFlow",
+   "hq_city": "Pune",
+   "country": "India",
+   "is_startup": true,
+   "what_they_do": "Demand forecasting and route optimization for logistics.",
+   "products": [],
+   "people": [],
+   "open_roles": [],
+   "contact": {}
+  },
+  "updated": "2026-10-27T18:26"
+ },
+ "LabLoop": {
+  "status": "ok",
+  "input": {
+   "name": "LabLoop",
+   "domains": "SDL",
+   "priority": 1,
+   "type": "startup",
+   "india": true,
+   "city": "Bengaluru",
+   "country": "India",
+   "website": "https://labloop.ai",
+   "what_they_do": "Lab automation for chemistry labs",
+   "sources": "https://www.ycombinator.com/companies/labloop"
+  },
+  "website": "https://labloop.ai",
+  "crawl": {
+   "website": "https://labloop.ai",
+   "emails": {
+    "founders@labloop.ai": "https://labloop.ai",
+    "sneha@labloop.ai": "https://labloop.ai"
+   },
+   "phones": [],
+   "linkedin_company": null,
+   "github_org": null,
+   "twitter": null,
+   "ats": [],
+   "job_links": [],
+   "careers_url": null,
+   "contact_url": null,
+   "jsonld_people": [],
+   "jsonld_org": {},
+   "rendered_with_jina": true
+  },
+  "pages_read": [
+   "https://labloop.ai",
+   "https://labloop.ai/team"
+  ],
+  "search_sources": [],
+  "profile": {
+   "official_name": "LabLoop",
+   "is_startup": true,
+   "hq_city": "Bengaluru",
+   "country": "India",
+   "what_they_do": "Closed-loop lab automation with Bayesian optimization.",
+   "people": [
+    {
+     "name": "Sneha Kulkarni",
+     "role": "Founder & CEO",
+     "is_key_contact": true,
+     "source": "https://labloop.ai/team",
+     "linkedin": null
+    },
+    {
+     "name": "Vikram Shah",
+     "role": "CTO",
+     "is_key_contact": true,
+     "source": "https://labloop.ai/team",
+     "linkedin": null
+    }
+   ],
+   "open_roles": [],
+   "contact": {}
+  },
+  "updated": "2026-10-27T18:26"
+ },
+ "TCS": {
+  "status": "ok",
+  "input": {
+   "name": "TCS",
+   "domains": "bioinformatics",
+   "priority": 1,
+   "type": "corporate",
+   "india": true,
+   "city": "Mumbai",
+   "country": "India",
+   "website": null,
+   "what_they_do": "IT services",
+   "sources": "https://seedtable.com/bio"
+  },
+  "website": null,
+  "crawl": {
+   "website": null,
+   "emails": {},
+   "phones": [],
+   "linkedin_company": null,
+   "github_org": null,
+   "twitter": null,
+   "ats": [],
+   "job_links": [],
+   "careers_url": null,
+   "contact_url": null,
+   "jsonld_people": [],
+   "jsonld_org": {}
+  },
+  "pages_read": [],
+  "search_sources": [],
+  "profile": {
+   "official_name": "TCS",
+   "is_startup": false,
+   "people": [],
+   "open_roles": [],
+   "contact": {}
+  },
+  "updated": "2026-10-27T18:26"
+ }
+}

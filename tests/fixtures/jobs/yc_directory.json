@@ -1,0 +1,23 @@
+[
+ {
+  "name": "LabLoop",
+  "website": "https://labloop.ai",
+  "all_locations": "Bengaluru, KA, India",
+  "regions": [
+   "India"
+  ],
+  "status": "Active",
+  "one_liner": "Lab automation for chemistry labs",
+  "tags": [
+   "Lab Automation"
+  ],
+  "url": "https://www.ycombinator.com/companies/labloop"
+ },
+ {
+  "name": "FarAway",
+  "website": "https://faraway.com",
+  "all_locations": "San Francisco",
+  "status": "Active",
+  "one_liner": "logistics"
+ }
+]

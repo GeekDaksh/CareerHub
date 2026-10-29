@@ -1,0 +1,20 @@
+{
+ "divya.rao@shipflow.in": {
+  "status": "invalid",
+  "by": "ZeroBounce",
+  "detail": "",
+  "date": "2026-10-27"
+ },
+ "divya@shipflow.in": {
+  "status": "valid",
+  "by": "ZeroBounce",
+  "detail": "",
+  "date": "2026-10-27"
+ },
+ "vikram@labloop.ai": {
+  "status": "unknown",
+  "by": "ZeroBounce",
+  "detail": "",
+  "date": "2026-10-27"
+ }
+}

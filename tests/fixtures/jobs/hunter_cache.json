@@ -1,0 +1,12 @@
+{
+ "shipflow.in": {
+  "pattern": null,
+  "accept_all": false,
+  "emails": []
+ },
+ "labloop.ai": {
+  "pattern": null,
+  "accept_all": false,
+  "emails": []
+ }
+}

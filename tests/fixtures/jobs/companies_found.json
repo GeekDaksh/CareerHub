@@ -1,0 +1,38 @@
+{
+ "done": [
+  "bioinformatics|https://seedtable.com/bio",
+  "supply chain|https://startuptalky.com/pune"
+ ],
+ "companies": [
+  {
+   "name": "GenoMind AI",
+   "website": "genomind.ai",
+   "city": "Bengaluru",
+   "country": "India",
+   "type": "startup",
+   "what_they_do": "AI for genomics",
+   "source_url": "https://seedtable.com/bio",
+   "domain": "bioinformatics"
+  },
+  {
+   "name": "TCS",
+   "website": null,
+   "city": "Mumbai",
+   "country": "India",
+   "type": "corporate",
+   "what_they_do": "IT services",
+   "source_url": "https://seedtable.com/bio",
+   "domain": "bioinformatics"
+  },
+  {
+   "name": "ShipFlow",
+   "website": "https://inc42.com/shipflow",
+   "city": "Pune",
+   "country": "India",
+   "type": "startup",
+   "what_they_do": "logistics",
+   "source_url": "https://startuptalky.com/pune",
+   "domain": "supply chain"
+  }
+ ]
+}

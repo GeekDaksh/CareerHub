@@ -1,0 +1,30 @@
+{
+ "GenoMind AI|Priya Sharma": {
+  "subject": "Your protein folding work + my SDL project",
+  "body": "Hi Priya, ... Daksh",
+  "to": "priya@genomind.ai",
+  "grade": "A · published",
+  "date": "2026-10-27"
+ },
+ "LabLoop|Sneha Kulkarni": {
+  "subject": "Your protein folding work + my SDL project",
+  "body": "Hi Priya, ... Daksh",
+  "to": "sneha@labloop.ai",
+  "grade": "A · published",
+  "date": "2026-10-27"
+ },
+ "ShipFlow|Ankit Mehta": {
+  "subject": "Your protein folding work + my SDL project",
+  "body": "Hi Priya, ... Daksh",
+  "to": "ankit.mehta@shipflow.in",
+  "grade": "A · published",
+  "date": "2026-10-27"
+ },
+ "TCS|Arjun Patel": {
+  "subject": "Your protein folding work + my SDL project",
+  "body": "Hi Priya, ... Daksh",
+  "to": null,
+  "grade": null,
+  "date": "2026-10-27"
+ }
+}

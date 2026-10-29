@@ -1,0 +1,34 @@
+{
+ "genomind.ai": {
+  "pattern": "{first}",
+  "accept_all": false,
+  "emails": [
+   {
+    "email": "amit@genomind.ai",
+    "first": "Amit",
+    "last": "Rao",
+    "position": "Head of Research",
+    "confidence": 92,
+    "linkedin": null
+   },
+   {
+    "email": "neha@genomind.ai",
+    "first": "Neha",
+    "last": "Gupta",
+    "position": "Talent Acquisition Lead",
+    "confidence": 88,
+    "linkedin": null
+   }
+  ]
+ },
+ "shipflow.in": {
+  "pattern": null,
+  "accept_all": null,
+  "emails": []
+ },
+ "labloop.ai": {
+  "pattern": null,
+  "accept_all": null,
+  "emails": []
+ }
+}

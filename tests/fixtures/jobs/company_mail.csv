@@ -1,0 +1,5 @@
+company,mail_domain,mail_provider,receives_mail,pattern,pattern_status,pattern_examples,accept_all,careers_email,general_email,phone,contact_page,startup
+GenoMind AI,genomind.ai,Google Workspace,True,{first},confirmed (5 email(s) + finder),"amit@genomind.ai, kavya@genomind.ai, neha@genomind.ai, priya@genomind.ai",,careers@genomind.ai,hello@genomind.ai,+91 80 1234 5678,,True
+ShipFlow,shipflow.in,Zoho Mail,True,{first},verified on Divya Rao,ankit.mehta@shipflow.in,,,info@shipflow.in,,https://shipflow.in/contact,True
+LabLoop,labloop.ai,Google Workspace,True,{first},seen once,sneha@labloop.ai,,,founders@labloop.ai,,,True
+TCS,,,,,no evidence,,,,,,,False

@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as C  # noqa: E402
 from common import llm  # noqa: E402
 from gigs import sources as S  # noqa: E402
-from common import levels, settings as SETTINGS, trust  # noqa: E402
+from common import gates, levels, settings as SETTINGS, trust  # noqa: E402
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
 GDIR = os.path.join(DATA_DIR, "gigs")
@@ -286,6 +286,7 @@ def run():
     seen = load("seen.json", {})
     notes = load("ai_notes.json", {})
     old = {g["id"]: g for g in load("gigs.json", {}).get("gigs", [])}
+    prev_visible = sum(1 for g in old.values() if g.get("visible"))
 
     raw = collect(state, health)
     max_age = C.MAX_GIG_AGE_DAYS * 86400
@@ -334,16 +335,19 @@ def run():
     notes = {k: v for k, v in notes.items() if k in keep_ids}
     seen = {k: v for k, v in seen.items() if NOW - v < 60 * 86400}
     ordered = sorted(gigs.values(), key=lambda g: (-g["visible"], -g["score"], -(g.get("posted") or 0)))
-    save("gigs.json", {"updated": NOW, "gigs": ordered})
-    save("seen.json", seen)
-    save("ai_notes.json", notes)
+    saved = gates.guard("gigs", ordered, prev_visible, health, NOW)
+    if saved:
+        save("gigs.json", {"updated": NOW, "gigs": ordered})
+        save("seen.json", seen)
+        save("ai_notes.json", notes)
     save("health.json", health)
     runs = state.get("runs", [])[-29:] + [{"at": NOW, "total": len(gigs), "visible": sum(g["visible"] for g in gigs.values()),
                                            "new": sum(1 for g in gigs.values() if g["first_seen"] == NOW)}]
     state["runs"] = runs
     save("state.json", state)
     vis = [g for g in ordered if g["visible"]]
-    print(f"gigs: {len(gigs)} collected · {len(vis)} shown · {runs[-1]['new']} new · AI notes: {len(todo)} tried")
+    print(f"gigs: {len(gigs)} collected · {len(vis)} shown · {runs[-1]['new']} new · AI notes: {len(todo)} tried"
+          + ("" if saved else " · NOT SAVED (output check failed, last good list kept)"))
     return ordered
 
 
