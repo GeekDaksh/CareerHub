@@ -34,7 +34,9 @@ def main():
     if a.baseline:
         json.dump({"metrics": m, "shield": shield, "level": lvl}, open(base_path, "w"), indent=1)
     elif os.path.exists(base_path):
-        H.compare(m, json.load(open(base_path))["metrics"])
+        bj = json.load(open(base_path))
+        paired = H.paired_delta(rows, H.predict(rows, bj["shield"], bj["level"]), preds)
+        H.compare(m, bj["metrics"], paired)
     hard = H.hard_eval(shield, lvl)
     print(f"== {split.upper()} split · {len(rows)} posts · {'baseline (all switches off)' if a.baseline else 'current config'}")
     print(H.fmt(m))

@@ -158,12 +158,48 @@ def card(flags, clusters, meaning, higher_better):
             "meaning": meaning, "higher_is_better": higher_better, "range_method": "campaign (cluster) bootstrap"}
 
 
-def compare(new, base):
+METRIC_SEL = {
+    "catch_rate": (lambda r: r["fraud"], lambda p: p["blocked"]),
+    "false_block": (lambda r: not r["fraud"], lambda p: p["blocked"]),
+    "senior_leak": (lambda r: r["exp"] in SENIOR_LABELS and not r["fraud"], lambda p: p["shown"]),
+    "entry_loss": (lambda r: r["exp"] in ENTRY_LABELS and not r["fraud"], lambda p: not p["shown"]),
+}
+
+
+def paired_delta(rows, base_preds, new_preds, n=1000, seed=7):
+    """Change vs baseline with a PAIRED campaign bootstrap: both versions are scored on the same resampled
+    campaigns, so the range is for the difference itself. Range not containing 0 = a real change."""
+    out = {}
+    for k, (cond, val) in METRIC_SEL.items():
+        groups = {}
+        for r, a, b in zip(rows, base_preds, new_preds):
+            if cond(r):
+                g = groups.setdefault(r.get("cluster", r.get("id")), [0, 0, 0])
+                g[0] += 1; g[1] += val(a); g[2] += val(b)
+        g = list(groups.values())
+        tot = sum(x[0] for x in g)
+        delta = (sum(x[2] for x in g) - sum(x[1] for x in g)) / tot
+        rnd = random.Random(seed)
+        vals = []
+        for _ in range(n):
+            pick = [g[rnd.randrange(len(g))] for _ in range(len(g))]
+            t = sum(x[0] for x in pick)
+            vals.append((sum(x[2] for x in pick) - sum(x[1] for x in pick)) / t)
+        vals.sort()
+        lo, hi = vals[int(0.025 * n)], vals[int(0.975 * n) - 1]
+        out[k] = {"delta": delta, "ci95": [lo, hi], "real_change": lo > 0 or hi < 0}
+    return out
+
+
+def compare(new, base, paired=None):
     """Add change vs baseline and whether the ranges overlap (overlap = the change could be luck)."""
     for k, c in new.items():
         b = base[k]
         c["delta_vs_baseline"] = c["value"] - b["value"]
         c["ranges_overlap"] = not (c["ci95"][0] > b["ci95"][1] or c["ci95"][1] < b["ci95"][0])
+        if paired:
+            c["delta_ci95"] = paired[k]["ci95"]
+            c["real_change"] = paired[k]["real_change"]
     return new
 
 
@@ -183,7 +219,11 @@ def hard_eval(shield, level_opts):
 def fmt(m):
     lines = []
     for k, c in m.items():
-        d = f"  Δ {c['delta_vs_baseline']*100:+.1f} pp{' (could be luck)' if c.get('ranges_overlap') else ' (real change)'}" \
-            if "delta_vs_baseline" in c else ""
+        d = ""
+        if "delta_ci95" in c:
+            lo, hi = c["delta_ci95"]
+            d = f"  Δ {c['delta_vs_baseline']*100:+.2f} pp [{lo*100:+.2f}…{hi*100:+.2f}]{' real change' if c['real_change'] else ' could be luck'}"
+        elif "delta_vs_baseline" in c:
+            d = f"  Δ {c['delta_vs_baseline']*100:+.1f} pp{' (could be luck)' if c.get('ranges_overlap') else ' (real change)'}"
         lines.append(f"{k:12s} {c['value']*100:6.2f}%  [{c['ci95'][0]*100:.2f}–{c['ci95'][1]*100:.2f}]  n={c['n']:5d} ({c.get('campaigns','?')} campaigns){d}  — {c['meaning']}")
     return "\n".join(lines)

@@ -191,22 +191,23 @@ AI_PLATFORMS = [
 ]
 
 # ============================ FILTER SETTINGS (switched on/off by the measured loop: eval/loop.py) ============================
-# Every option starts OFF (= the original rules). eval/LOOP.md records which ones were accepted, with numbers.
+# Every option started OFF (= the original rules). Values below are the ones the loop ACCEPTED (eval/LOOP.md, run 4);
+# the rest were measured and rejected — see the log for the numbers.
 SHIELD = {
-    "word_boundaries": False,       # bug fix: match whole words only ('demonstrate products' is not 'rate products')
+    "word_boundaries": True,       # bug fix: match whole words only ('demonstrate products' is not 'rate products')
     "normalize_text": False,        # undo tricks: 'W h a t s A p p', zero-width characters, look-alike letters
     "negation_guard": False,        # 'no registration fee' / 'we never charge money' must not count as a fee demand
-    "chat_contact_only": False,     # WhatsApp/Telegram counts only as a contact channel, not a product ('WhatsApp chatbot' gigs)
-    "wfh_money_rules": False,       # classic 'earn $X a week from home, no experience' pattern
+    "chat_contact_only": True,     # WhatsApp/Telegram counts only as a contact channel, not a product ('WhatsApp chatbot' gigs)
+    "wfh_money_rules": True,       # classic 'earn $X a week from home, no experience' pattern
     "money_transfer_rules": False,  # payment-processing, reshipping and mystery-shopper scams
     "personal_email_cv": False,     # 'send your CV to ...@gmail.com'
     "weak_signal_combo": 0,         # block when at least N weak warning signs appear together (0 = off)
 }
 LEVEL = {
-    "entry_words_win": False,       # 'Junior Art Director', 'Graduate role': clear entry words in the title beat senior words
+    "entry_words_win": True,       # 'Junior Art Director', 'Graduate role': clear entry words in the title beat senior words
     "staff_needs_role": False,      # 'Warehouse Staff' is not 'Staff Engineer'
     "assistant_not_senior": False,  # 'Assistant Manager', 'Executive Assistant to the Chief…' are not senior roles
-    "years_patterns_ext": False,    # read more ways of writing years: '3+ yrs', "4 years' experience", 'experience of 5 years'
+    "years_patterns_ext": True,    # read more ways of writing years: '3+ yrs', "4 years' experience", 'experience of 5 years'
     "senior_words_ext": False,      # extra senior title words: experienced, team lead, supervisor, head of
     "senior_from_desc": False,      # senior hints in the text: 'seasoned', 'extensive experience', 'proven track record'
     "hide_not_stated": False,       # hide every job whose level is not stated (strict mode)
