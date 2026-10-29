@@ -76,9 +76,115 @@ def platform_of(url):
     return None
 
 
-def scam_reasons(text):
-    t = str(text or "")
-    return [why for pat, why in SCAM_RULES if re.search(pat, t, re.I)]
+# ---- optional rule sets, switched by config.SHIELD (measured in eval/LOOP.md) ----
+# Same reasons as SCAM_RULES, but whole-word matching and tighter phrasing (fixes false blocks found on train).
+STRICT_RULES = [
+    (r"\b(telegram|whats\s?app)\b|wa\.me/|t\.me/", "moves you to Telegram/WhatsApp"),
+    (r"\b(registration|joining|security|training|onboarding|application|processing|placement|verification|kit|"
+     r"laptop|id card|uniform)\s*(fee|fees|charge|charges|deposit|amount)\b", "asks you to pay a fee or deposit"),
+    (r"\bpay\s+(rs\.?|₹|inr|\$)\s?\d+\s*(to|for)\s*(apply|join|start|register|confirm)\b|\brefundable deposit\b|"
+     r"\b(you|must|need to|have to|kindly|first|will need to)\s+pay\b[^.\n]{0,30}\b(to|before|for)\s+"
+     r"(apply|join|start|register|confirm|the (job|offer|position))\b", "asks you to pay before starting"),
+    (r"(100%|\bguaranteed)\s*(job|placement|selection)\b|\bjob guarantee\b", "promises a guaranteed job"),
+    (r"\bno interview\b|\bwithout (an )?interview\b|\bdirect (joining|selection)\b|\boffer letter (in|within) \d+ ?(hours|hrs|days)\b",
+     "no interview / instant offer"),
+    (r"\bearn\s+(rs\.?|₹|inr|\$)\s?\d[\d,]*\s*(per|a|/)\s*(day|week)\b|\bdaily (payment|payout|income)\b|"
+     r"\bweekly payout guaranteed\b", "promises fixed daily/weekly earnings"),
+    (r"\btyping jobs?\b|\bcopy[- ]?paste (jobs?|work)\b|\bsms sending\b|\bform filling (jobs?|work)\b|"
+     r"\bcaptcha (entry|typing|jobs?)\b|\bdata entry\b.{0,40}\b(from home|mobile|daily)\b|\bad posting jobs?\b|"
+     r"\bmobile (based )?jobs?\b(?! board)|\bpart[- ]time jobs?\b.{0,40}\b(daily|per day)\b", "typing / data-entry-from-home pattern"),
+    (r"\blike (and |& )?(subscribe|share)\b|\blike (our )?(posts|videos)\b|\brate (hotels|products|apps)\b|"
+     r"\breview (products|hotels) for (cash|money)\b|\btask[- ]based (earning|income)\b|\bprepaid tasks?\b",
+     "click / like / rating tasks (classic task scam)"),
+    (r"\bcrypto(currency)?\s+(trading|wallet|transfer)\b|\busdt\b|\bforex trading jobs?\b|\bbinary options?\b|"
+     r"\b(buy|purchase|send|pay (in|with|via|using))\s+(\w+\s+)?gift ?cards?\b|\b(via|through|by|using) western union\b",
+     "crypto / forex / gift-card money"),
+    (r"\bsend (me |us )?your (bank|card|otp|password|aadhaar|aadhar|pan)\b|\bshare (your )?otp\b",
+     "asks for bank / OTP / ID details"),
+    (r"\bfree (sample|test) (work|project) (of|for) (the )?(full|whole|entire)\b", "wants the full job free as a 'test'"),
+    (r"\b(hr|recruiter|hiring manager)\b[^.\n]{0,60}@(gmail|yahoo|outlook|hotmail|rediffmail|ymail)\.", "recruiter uses a personal email"),
+    (r"\blimited (seats|slots)\b|\bhurry,? apply\b|\bonly today\b", "pressure tactics"),
+]
+HOMOGLYPHS = str.maketrans({"а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "х": "x", "у": "y", "і": "i", "Т": "T",
+                            "А": "A", "Е": "E", "О": "O", "Р": "P", "С": "C", "Н": "H", "К": "K", "М": "M", "В": "B"})
+NEGATION = re.compile(r"\b(no|never|not|don't|do not|doesn't|without|zero|free of|beware|nor|cover|covers|covered|"
+                      r"reimburse|reimbursed|waived|paid by (the )?(company|employer))\b[^.!\n]{0,40}$", re.I)
+NEGATABLE = {"asks you to pay a fee or deposit", "asks you to pay before starting"}
+CHAT_REASON = "moves you to Telegram/WhatsApp"
+CHAT_CONTACT = re.compile(
+    r"\b(contact|message|msg|ping|text|reach|dm|chat with|call|join|apply)\s+(us\s+|hr\s+|our\s+|the\s+|me\s+)?"
+    r"(on\s+|via\s+|at\s+|through\s+|in\s+)?(whatsapp|telegram)"
+    r"|\b(whatsapp|telegram)\s*(hr|recruiter|number|no\.?)\b|\b(whatsapp|telegram)[^a-z]{0,5}\+?\d[\d\s-]{7,}"
+    r"|wa\.me|t\.me/|chat\.whatsapp\.com", re.I)
+EXTRA_RULES = {
+    "wfh_money_rules": [(r"(work|working) (from|at) home.{0,120}?(earn|\$\s?\d|₹\s?\d|rs\.?\s?\d|income|paid (daily|weekly))"
+                         r"|earn (up to |upto )?(\$|₹|rs\.?|inr)\s?\d[\d,]*\+?\s*(per|a|/|every)\s*(week|day|hour)"
+                         r"|no experience (necessary|needed|required).{0,80}?(earn|\$\s?\d|₹|income)"
+                         r"|home[- ]based (job|work|business)|be your own boss|extra income from home",
+                         "earn-from-home money promise")],
+    "money_transfer_rules": [(r"money transfer|wire (the )?(money|funds|balance)|transfer (the )?funds"
+                              r"|receive (payments|funds|money) (from|into|on behalf)|payment processing (agent|assistant|representative|coordinator)"
+                              r"|financial (agent|representative)|reshipp?ing|package (forwarding|handler)|mystery shopper"
+                              r"|deposit (the |a )?(check|cheque)", "money-transfer / reshipping / mystery-shopper scheme")],
+    "personal_email_cv": [(r"(send|email|mail|forward|share)\s+(your\s+|us\s+your\s+)?(cv|resume|resumes|biodata|profile)"
+                           r"[^.\n]{0,40}@(gmail|yahoo|outlook|hotmail|rediffmail|ymail)\.",
+                           "asks for your CV at a personal email address")],
+}
+WEAK_SIGNALS = [
+    (r"no (prior )?experience (necessary|needed|required)", "no experience needed"),
+    (r"(immediate|urgent)(ly)? (start|joining|hiring|requirement)", "urgent / immediate start"),
+    (r"flexible (hours|schedule|time)", "flexible hours"),
+    (r"(work|working) from home|home[- ]based|work at home", "work from home"),
+    (r"data entry|typing|clerical|administrative assistant", "data entry / admin"),
+    (r"(earn|income|make)\s.{0,20}(\$|₹|rs\.?)\s?\d", "money amount promised"),
+    (r"(easy|simple) (job|work|task|money)", "'easy money' wording"),
+    (r"(apply|send|email)[^.\n]{0,30}@(gmail|yahoo|hotmail|outlook)\.", "personal email contact"),
+]
+
+
+def normalize(t):
+    """Undo common tricks scammers use to slip past filters."""
+    import unicodedata
+    t = unicodedata.normalize("NFKC", t).translate(HOMOGLYPHS)
+    t = re.sub(r"[​-‏⁠﻿]", "", t)
+    t = re.sub(r"\b(?:[A-Za-z] ){3,}[A-Za-z]\b", lambda m: m.group(0).replace(" ", ""), t)   # 'W h a t s A p p'
+    t = re.sub(r"\bw\s?h?a\s?t+s?\s?a\s?p+\b|\bwatsapp\b|\bwhtsapp\b|\bwhatsap\b", "whatsapp", t, flags=re.I)
+    t = re.sub(r"\btele\s?gram\b|\btelegrm\b", "telegram", t, flags=re.I)
+    return t
+
+
+def scam_reasons(text, shield=None):
+    """Scam signs found in a post, as plain-language reasons. shield = config.SHIELD-style switches (defaults: config)."""
+    if shield is None:
+        try:
+            import config as _C
+            shield = _C.SHIELD
+        except Exception:
+            shield = {}
+    t = str(text or "")[:20000]
+    if shield.get("normalize_text"):
+        t = normalize(t)
+    out = []
+    for pat, why in (STRICT_RULES if shield.get("word_boundaries") else SCAM_RULES):
+        if why == CHAT_REASON and shield.get("chat_contact_only"):
+            if CHAT_CONTACT.search(t):
+                out.append(why)
+            continue
+        if why in NEGATABLE and shield.get("negation_guard"):
+            if any(not NEGATION.search(t[max(0, m.start() - 60):m.start()]) for m in re.finditer(pat, t, re.I)):
+                out.append(why)
+            continue
+        if re.search(pat, t, re.I):
+            out.append(why)
+    for key, rules in EXTRA_RULES.items():
+        if shield.get(key):
+            out += [why for pat, why in rules if re.search(pat, t, re.I)]
+    n = shield.get("weak_signal_combo") or 0
+    if n:
+        weak = [why for pat, why in WEAK_SIGNALS if re.search(pat, t, re.I)]
+        if len(weak) >= n:
+            out.append("several warning signs together: " + ", ".join(weak))
+    return list(dict.fromkeys(out))
 
 
 def check(item, company_domain=None, company_verified=False):

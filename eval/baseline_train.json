@@ -1,0 +1,67 @@
+{
+ "metrics": {
+  "catch_rate": {
+   "value": 0.07992202729044834,
+   "n": 513,
+   "hits": 41,
+   "ci95": [
+    0.05847953216374269,
+    0.10331384015594541
+   ],
+   "meaning": "Share of real scam posts the shield blocks",
+   "higher_is_better": true
+  },
+  "false_block": {
+   "value": 0.0062202352026436,
+   "n": 10289,
+   "hits": 64,
+   "ci95": [
+    0.004859558752065313,
+    0.007678102828263193
+   ],
+   "meaning": "Share of real (non-scam) posts wrongly blocked",
+   "higher_is_better": false
+  },
+  "senior_leak": {
+   "value": 0.3026984747751271,
+   "n": 2557,
+   "hits": 774,
+   "ci95": [
+    0.28627297614391867,
+    0.3191239734063355
+   ],
+   "meaning": "Share of senior jobs that still reach you",
+   "higher_is_better": false
+  },
+  "entry_loss": {
+   "value": 0.14293948126801154,
+   "n": 1735,
+   "hits": 248,
+   "ci95": [
+    0.12622478386167146,
+    0.15907780979827088
+   ],
+   "meaning": "Share of real entry-level jobs wrongly hidden",
+   "higher_is_better": false
+  }
+ },
+ "shield": {
+  "word_boundaries": false,
+  "normalize_text": false,
+  "negation_guard": false,
+  "chat_contact_only": false,
+  "wfh_money_rules": false,
+  "money_transfer_rules": false,
+  "personal_email_cv": false,
+  "weak_signal_combo": 0
+ },
+ "level": {
+  "entry_words_win": false,
+  "staff_needs_role": false,
+  "assistant_not_senior": false,
+  "years_patterns_ext": false,
+  "senior_words_ext": false,
+  "senior_from_desc": false,
+  "hide_not_stated": false
+ }
+}
