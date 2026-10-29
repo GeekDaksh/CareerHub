@@ -191,6 +191,39 @@ def paired_delta(rows, base_preds, new_preds, n=1000, seed=7):
     return out
 
 
+def calibration(rows, preds, shield):
+    """Are the labels true? For the shield: of the posts with N scam signs, how many really are scams.
+    For the level filter: of the posts labelled entry / not stated / senior, what EMSCAD says they are."""
+    sc = {}
+    for r in rows:
+        n = min(len(trust.scam_reasons(f"{r['title']}\n{r['text']}", shield)), 2)
+        c = sc.setdefault(n, [0, 0])
+        c[0] += 1
+        c[1] += r["fraud"]
+    lv = {}
+    for r, p in zip(rows, preds):
+        if r["fraud"] or r["exp"] not in ENTRY_LABELS | SENIOR_LABELS:
+            continue
+        c = lv.setdefault(p["level"], [0, 0, 0])
+        c[0] += 1
+        c[1] += r["exp"] in ENTRY_LABELS
+        c[2] += r["exp"] in SENIOR_LABELS
+    return {"shield": {f"{k}{'+' if k == 2 else ''} signs": {"posts": v[0], "really_scam": v[1],
+                                                           "scam_rate": v[1] / v[0]} for k, v in sorted(sc.items())},
+            "level": {k: {"posts": v[0], "really_entry": v[1] / v[0], "really_senior": v[2] / v[0]}
+                      for k, v in sorted(lv.items())}}
+
+
+def fmt_calibration(cal):
+    out = ["Calibration — scam signs found vs. really a scam:"]
+    for k, v in cal["shield"].items():
+        out.append(f"   {k:9s} {v['posts']:6d} posts · {v['really_scam']:4d} scams · {v['scam_rate']*100:5.1f}% are scams")
+    out.append("Calibration — level label vs. EMSCAD's own label (jobs with a stated level):")
+    for k, v in cal["level"].items():
+        out.append(f"   {k:11s} {v['posts']:5d} posts · {v['really_entry']*100:5.1f}% entry · {v['really_senior']*100:5.1f}% senior")
+    return "\n".join(out)
+
+
 def compare(new, base, paired=None):
     """Add change vs baseline and whether the ranges overlap (overlap = the change could be luck)."""
     for k, c in new.items():

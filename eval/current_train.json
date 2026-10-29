@@ -1,0 +1,134 @@
+{
+ "metrics": {
+  "catch_rate": {
+   "value": 0.11306042884990253,
+   "n": 513,
+   "campaigns": 361,
+   "hits": 58,
+   "ci95": [
+    0.052980132450331126,
+    0.18627450980392157
+   ],
+   "meaning": "Share of real scam posts the shield blocks",
+   "higher_is_better": true,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": 0.03313840155945419,
+   "ranges_overlap": true,
+   "delta_ci95": [
+    0.01282051282051282,
+    0.06504065040650407
+   ],
+   "real_change": true
+  },
+  "false_block": {
+   "value": 0.0015550588006609,
+   "n": 10289,
+   "campaigns": 8094,
+   "hits": 16,
+   "ci95": [
+    0.0007889546351084812,
+    0.0023715415019762848
+   ],
+   "meaning": "Share of real (non-scam) posts wrongly blocked",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": -0.0046651764019827,
+   "ranges_overlap": false,
+   "delta_ci95": [
+    -0.006410908720871069,
+    -0.0031091011871113624
+   ],
+   "real_change": true
+  },
+  "senior_leak": {
+   "value": 0.2706296441141963,
+   "n": 2557,
+   "campaigns": 2231,
+   "hits": 692,
+   "ci95": [
+    0.2495134293499416,
+    0.2921303656597774
+   ],
+   "meaning": "Share of senior jobs that still reach you",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": -0.0320688306609308,
+   "ranges_overlap": true,
+   "delta_ci95": [
+    -0.039068666140489344,
+    -0.02433371958285052
+   ],
+   "real_change": true
+  },
+  "entry_loss": {
+   "value": 0.14121037463976946,
+   "n": 1735,
+   "campaigns": 1377,
+   "hits": 245,
+   "ci95": [
+    0.12004405286343613,
+    0.16280384397964953
+   ],
+   "meaning": "Share of real entry-level jobs wrongly hidden",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": -0.0017291066282420775,
+   "ranges_overlap": true,
+   "delta_ci95": [
+    -0.008403361344537815,
+    0.005139920045688178
+   ],
+   "real_change": false
+  }
+ },
+ "calibration": {
+  "shield": {
+   "0 signs": {
+    "posts": 10728,
+    "really_scam": 455,
+    "scam_rate": 0.042412378821774795
+   },
+   "1 signs": {
+    "posts": 74,
+    "really_scam": 58,
+    "scam_rate": 0.7837837837837838
+   }
+  },
+  "level": {
+   "entry": {
+    "posts": 492,
+    "really_entry": 0.9512195121951219,
+    "really_senior": 0.04878048780487805
+   },
+   "not stated": {
+    "posts": 1690,
+    "really_entry": 0.6047337278106509,
+    "really_senior": 0.3952662721893491
+   },
+   "senior": {
+    "posts": 2110,
+    "really_entry": 0.11611374407582939,
+    "really_senior": 0.8838862559241706
+   }
+  }
+ },
+ "shield": {
+  "word_boundaries": true,
+  "normalize_text": false,
+  "negation_guard": false,
+  "chat_contact_only": true,
+  "wfh_money_rules": true,
+  "money_transfer_rules": false,
+  "personal_email_cv": false,
+  "weak_signal_combo": 0
+ },
+ "level": {
+  "entry_words_win": true,
+  "staff_needs_role": false,
+  "assistant_not_senior": false,
+  "years_patterns_ext": true,
+  "senior_words_ext": false,
+  "senior_from_desc": false,
+  "hide_not_stated": false
+ }
+}

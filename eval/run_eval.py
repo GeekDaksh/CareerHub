@@ -37,9 +37,14 @@ def main():
         bj = json.load(open(base_path))
         paired = H.paired_delta(rows, H.predict(rows, bj["shield"], bj["level"]), preds)
         H.compare(m, bj["metrics"], paired)
+    cal = H.calibration(rows, preds, shield)
     hard = H.hard_eval(shield, lvl)
     print(f"== {split.upper()} split · {len(rows)} posts · {'baseline (all switches off)' if a.baseline else 'current config'}")
     print(H.fmt(m))
+    print(H.fmt_calibration(cal))
+    if not a.final and not a.baseline:
+        json.dump({"metrics": m, "calibration": cal, "shield": shield, "level": lvl},
+                  open(os.path.join(EV, "current_train.json"), "w"), indent=1)
     hs = sum(h["scam_ok"] for h in hard); hl = sum(h["level_ok"] for h in hard)
     print(f"India hard set: scam decisions right {hs}/{len(hard)} · level decisions right {hl}/{len(hard)}")
     for h in hard:
@@ -49,7 +54,7 @@ def main():
         with open(os.path.join(EV, "test_runs.log"), "a") as f:
             f.write(json.dumps({"at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z",
                                 "shield": shield, "level": lvl, "metrics": m}) + "\n")
-        json.dump({"metrics": m, "shield": shield, "level": lvl, "hard": hard},
+        json.dump({"metrics": m, "calibration": cal, "shield": shield, "level": lvl, "hard": hard},
                   open(os.path.join(EV, "final_test.json"), "w"), indent=1)
         print("Logged to eval/test_runs.log")
 
