@@ -48,6 +48,13 @@ RULEBOOK = [
 # tested, so a label can never claim one definition while the code ran another.
 
 
+def _stable(o):
+    """JSON helper: sets in sorted order (a plain str(set) changes between runs and broke resume once)."""
+    if isinstance(o, (set, frozenset)):
+        return sorted(o, key=str)
+    return getattr(o, "pattern", str(o))
+
+
 def fingerprint(fam, key):
     """Hash of the code that defines one switch. Changes whenever that switch's rule text changes."""
     if fam == "level":
@@ -60,15 +67,15 @@ def fingerprint(fam, key):
                 "weak_signal_combo": trust.WEAK_SIGNALS}.get(key)
         if part is None:
             part = trust.EXTRA_RULES[key]
-        src = json.dumps(part, default=str, sort_keys=True) + inspect.getsource(trust.scam_reasons)
+        src = json.dumps(part, default=_stable, sort_keys=True) + inspect.getsource(trust.scam_reasons)
     return hashlib.sha1(src.encode()).hexdigest()[:10]
 
 
 def eligible(entries, fam, key, v, fp, cfg):
     """OBJECTIVE.md: a rejected change may be retried at most twice, and only if something it depends on
     changed since its last try: another switch in the same filter, or the rule's own definition."""
-    past = [e for e in entries if e["key"] == key and e["value"] == v]
-    if any(e["accepted"] for e in past) or len(past) >= 3:
+    past = [e for e in entries if e["key"] == key and v in e.get("values_tried", [e["value"]])]
+    if any(e["accepted"] and e["value"] == v for e in past) or len(past) >= 3:
         return False
     if not past:
         return True
@@ -259,7 +266,7 @@ def main():
         ok, _, v, nb, before, after, why, ev = best
         it += 1
         first = next((e for e in entries if e["key"] == key), None)
-        entry = {"iter": it, "family": fam, "key": key, "value": v, "fingerprint": fp, "family_cfg": copy.deepcopy(cfg),
+        entry = {"iter": it, "family": fam, "key": key, "value": v, "values_tried": vals, "fingerprint": fp, "family_cfg": copy.deepcopy(cfg),
                  "kind": kind, "targets": fixes,
                  "proposer": "rulebook" if first is None or first.get("fingerprint") == fp else "person (rule edited after diagnosis)",
                  "diagnosis": diag, "before": pct(before), "after": pct(after),
