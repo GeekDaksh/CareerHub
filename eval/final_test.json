@@ -1,0 +1,673 @@
+{
+ "metrics": {
+  "catch_rate": {
+   "value": 0.12181303116147309,
+   "n": 353,
+   "campaigns": 259,
+   "hits": 43,
+   "ci95": [
+    0.05246913580246913,
+    0.20454545454545456
+   ],
+   "meaning": "Share of real scam posts the shield blocks",
+   "higher_is_better": true,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": 0.03966005665722379,
+   "ranges_overlap": true,
+   "delta_ci95": [
+    0.015503875968992248,
+    0.07936507936507936
+   ],
+   "real_change": true
+  },
+  "false_block": {
+   "value": 0.002379182156133829,
+   "n": 6725,
+   "campaigns": 5515,
+   "hits": 16,
+   "ci95": [
+    0.0012163600425726016,
+    0.0035410764872521247
+   ],
+   "meaning": "Share of real (non-scam) posts wrongly blocked",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": -0.007732342007434945,
+   "ranges_overlap": false,
+   "delta_ci95": [
+    -0.010607667828458858,
+    -0.00528222155146393
+   ],
+   "real_change": true
+  },
+  "senior_leak": {
+   "value": 0.25091352009744217,
+   "n": 1642,
+   "campaigns": 1481,
+   "hits": 412,
+   "ci95": [
+    0.22667464114832536,
+    0.2746650426309379
+   ],
+   "meaning": "Share of senior jobs that still reach you",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": -0.02740560292326427,
+   "ranges_overlap": true,
+   "delta_ci95": [
+    -0.035992801439712056,
+    -0.01834862385321101
+   ],
+   "real_change": true
+  },
+  "entry_loss": {
+   "value": 0.16031195840554593,
+   "n": 1154,
+   "campaigns": 960,
+   "hits": 185,
+   "ci95": [
+    0.1356223175965665,
+    0.18541300527240773
+   ],
+   "meaning": "Share of real entry-level jobs wrongly hidden",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap",
+   "delta_vs_baseline": 0.0,
+   "ranges_overlap": true,
+   "delta_ci95": [
+    -0.00827966881324747,
+    0.007048458149779736
+   ],
+   "real_change": false
+  }
+ },
+ "baseline": {
+  "catch_rate": {
+   "value": 0.0821529745042493,
+   "n": 353,
+   "campaigns": 259,
+   "hits": 29,
+   "ci95": [
+    0.016129032258064516,
+    0.16666666666666666
+   ],
+   "meaning": "Share of real scam posts the shield blocks",
+   "higher_is_better": true,
+   "range_method": "campaign (cluster) bootstrap"
+  },
+  "false_block": {
+   "value": 0.010111524163568773,
+   "n": 6725,
+   "campaigns": 5515,
+   "hits": 68,
+   "ci95": [
+    0.007298160255435609,
+    0.013015184381778741
+   ],
+   "meaning": "Share of real (non-scam) posts wrongly blocked",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap"
+  },
+  "senior_leak": {
+   "value": 0.27831912302070644,
+   "n": 1642,
+   "campaigns": 1481,
+   "hits": 457,
+   "ci95": [
+    0.25393939393939396,
+    0.30450669914738127
+   ],
+   "meaning": "Share of senior jobs that still reach you",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap"
+  },
+  "entry_loss": {
+   "value": 0.16031195840554593,
+   "n": 1154,
+   "campaigns": 960,
+   "hits": 185,
+   "ci95": [
+    0.13555194805194806,
+    0.18458781362007168
+   ],
+   "meaning": "Share of real entry-level jobs wrongly hidden",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap"
+  }
+ },
+ "unseen_campaigns": {
+  "catch_rate": {
+   "value": 0.049107142857142856,
+   "n": 224,
+   "campaigns": 206,
+   "hits": 11,
+   "ci95": [
+    0.01834862385321101,
+    0.0821917808219178
+   ],
+   "meaning": "Share of real scam posts the shield blocks",
+   "higher_is_better": true,
+   "range_method": "campaign (cluster) bootstrap"
+  },
+  "false_block": {
+   "value": 0.0031479538300104933,
+   "n": 4765,
+   "campaigns": 4590,
+   "hits": 15,
+   "ci95": [
+    0.0016722408026755853,
+    0.004826862539349423
+   ],
+   "meaning": "Share of real (non-scam) posts wrongly blocked",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap"
+  },
+  "senior_leak": {
+   "value": 0.24403387220939185,
+   "n": 1299,
+   "campaigns": 1271,
+   "hits": 317,
+   "ci95": [
+    0.22076923076923077,
+    0.2672281776416539
+   ],
+   "meaning": "Share of senior jobs that still reach you",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap"
+  },
+  "entry_loss": {
+   "value": 0.17919799498746866,
+   "n": 798,
+   "campaigns": 767,
+   "hits": 143,
+   "ci95": [
+    0.15307402760351319,
+    0.20759493670886076
+   ],
+   "meaning": "Share of real entry-level jobs wrongly hidden",
+   "higher_is_better": false,
+   "range_method": "campaign (cluster) bootstrap"
+  }
+ },
+ "calibration": {
+  "shield": {
+   "0 signs": {
+    "posts": 7019,
+    "really_scam": 310,
+    "scam_rate": 0.04416583558911526
+   },
+   "1 signs": {
+    "posts": 59,
+    "really_scam": 43,
+    "scam_rate": 0.7288135593220338
+   }
+  },
+  "level": {
+   "entry": {
+    "posts": 335,
+    "really_entry": 0.9343283582089552,
+    "really_senior": 0.06567164179104477
+   },
+   "not stated": {
+    "posts": 1046,
+    "really_entry": 0.627151051625239,
+    "really_senior": 0.372848948374761
+   },
+   "senior": {
+    "posts": 1415,
+    "really_entry": 0.13074204946996468,
+    "really_senior": 0.8692579505300353
+   }
+  }
+ },
+ "shield": {
+  "word_boundaries": true,
+  "normalize_text": true,
+  "negation_guard": false,
+  "chat_contact_only": true,
+  "wfh_money_rules": true,
+  "money_transfer_rules": false,
+  "personal_email_cv": false,
+  "weak_signal_combo": 0
+ },
+ "level": {
+  "entry_words_win": true,
+  "staff_needs_role": false,
+  "assistant_not_senior": false,
+  "years_patterns_ext": true,
+  "senior_words_ext": false,
+  "senior_from_desc": false,
+  "hide_not_stated": false
+ },
+ "hard": [
+  {
+   "id": "s01",
+   "title": "Work From Home Data Entry",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "moves you to Telegram/WhatsApp",
+    "no interview / instant offer",
+    "typing / data-entry-from-home pattern"
+   ]
+  },
+  {
+   "id": "s02",
+   "title": "HR Executive (Remote)",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "asks you to pay a fee or deposit"
+   ]
+  },
+  {
+   "id": "s03",
+   "title": "YouTube Like Task",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "click / like / rating tasks (classic task scam)"
+   ]
+  },
+  {
+   "id": "s04",
+   "title": "Online Typing Job",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "moves you to Telegram/WhatsApp",
+    "promises fixed daily/weekly earnings",
+    "typing / data-entry-from-home pattern"
+   ]
+  },
+  {
+   "id": "s05",
+   "title": "Amazon Product Reviewer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "moves you to Telegram/WhatsApp",
+    "promises fixed daily/weekly earnings",
+    "click / like / rating tasks (classic task scam)",
+    "earn-from-home money promise"
+   ]
+  },
+  {
+   "id": "s06",
+   "title": "Fresher IT Job Guaranteed",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "entry",
+   "reasons": [
+    "asks you to pay a fee or deposit",
+    "promises a guaranteed job",
+    "no interview / instant offer"
+   ]
+  },
+  {
+   "id": "s07",
+   "title": "Laptop Provided Job",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "asks you to pay a fee or deposit",
+    "pressure tactics"
+   ]
+  },
+  {
+   "id": "s08",
+   "title": "Crypto Trading Associate",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "crypto / forex / gift-card money",
+    "asks for bank / OTP / ID details"
+   ]
+  },
+  {
+   "id": "s09",
+   "title": "Data Entry Operator",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "asks you to pay a fee or deposit"
+   ]
+  },
+  {
+   "id": "s10",
+   "title": "Part Time Job",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "promises fixed daily/weekly earnings"
+   ]
+  },
+  {
+   "id": "s11",
+   "title": "Online Job",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "moves you to Telegram/WhatsApp"
+   ]
+  },
+  {
+   "id": "s12",
+   "title": "Remote Assistant",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "asks you to pay a fee or deposit"
+   ]
+  },
+  {
+   "id": "s13",
+   "title": "Payment Processing Agent",
+   "scam_ok": false,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "s14",
+   "title": "Mystery Shopper",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "crypto / forex / gift-card money"
+   ]
+  },
+  {
+   "id": "s15",
+   "title": "Work from home",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": true,
+   "level": "not stated",
+   "reasons": [
+    "promises fixed daily/weekly earnings",
+    "earn-from-home money promise"
+   ]
+  },
+  {
+   "id": "l01",
+   "title": "WhatsApp Chatbot Developer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "l02",
+   "title": "Telegram Bot for Stock Alerts",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "l03",
+   "title": "Machine Learning Intern",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  },
+  {
+   "id": "l04",
+   "title": "Data Scientist",
+   "scam_ok": false,
+   "level_ok": true,
+   "blocked": true,
+   "level": "entry",
+   "reasons": [
+    "asks you to pay a fee or deposit"
+   ]
+  },
+  {
+   "id": "l05",
+   "title": "Python Automation Script",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "l06",
+   "title": "Social Media Manager (Part-time)",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "l07",
+   "title": "Lead Generation Specialist",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  },
+  {
+   "id": "l08",
+   "title": "Backend Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "l09",
+   "title": "Technical Writer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "l10",
+   "title": "AI Trainer \u2013 Coding",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "l11",
+   "title": "Computer Vision Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "l12",
+   "title": "Customer Support (Remote)",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "not stated",
+   "reasons": []
+  },
+  {
+   "id": "v01",
+   "title": "Associate Software Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  },
+  {
+   "id": "v02",
+   "title": "Graduate Engineer Trainee \u2013 AI",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  },
+  {
+   "id": "v03",
+   "title": "SDE II \u2013 Machine Learning",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v04",
+   "title": "Machine Learning Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v05",
+   "title": "Engineering Manager, Data",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v06",
+   "title": "Staff Data Scientist",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v07",
+   "title": "Junior Data Scientist",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  },
+  {
+   "id": "v08",
+   "title": "Data Analyst Intern",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  },
+  {
+   "id": "v09",
+   "title": "Technical Lead \u2013 Computer Vision",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v10",
+   "title": "Software Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v11",
+   "title": "Software Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  },
+  {
+   "id": "v12",
+   "title": "Research Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v13",
+   "title": "Sr. ML Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v14",
+   "title": "AI Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v15",
+   "title": "Principal Scientist",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "senior",
+   "reasons": []
+  },
+  {
+   "id": "v16",
+   "title": "Trainee Data Engineer",
+   "scam_ok": true,
+   "level_ok": true,
+   "blocked": false,
+   "level": "entry",
+   "reasons": []
+  }
+ ]
+}
