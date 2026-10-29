@@ -91,7 +91,7 @@ STRICT_RULES = [
     (r"\bearn\s+(rs\.?|₹|inr|\$)\s?\d[\d,]*\s*(per|a|/)\s*(day|week)\b|\bdaily (payment|payout|income)\b|"
      r"\bweekly payout guaranteed\b", "promises fixed daily/weekly earnings"),
     (r"\btyping jobs?\b|\bcopy[- ]?paste (jobs?|work)\b|\bsms sending\b|\bform filling (jobs?|work)\b|"
-     r"\bcaptcha (entry|typing|jobs?)\b|\bdata entry\b.{0,40}\b(home|mobile|daily)\b|\bad posting jobs?\b|"
+     r"\bcaptcha (entry|typing|jobs?)\b|\bdata entry\b.{0,40}\b(homes?|mobile|daily)\b|\bad posting jobs?\b|"
      r"\bmobile (based )?jobs?\b(?! board)|\bpart[- ]time jobs?\b.{0,40}\b(daily|per day)\b", "typing / data-entry-from-home pattern"),
     (r"\blike (and |& )?(subscribe|share)\b|\blike (our )?(posts|videos)\b|\brate (hotels|products|apps)\b|"
      r"\breview (products|hotels) for (cash|money)\b|\btask[- ]based (earning|income)\b|\bprepaid tasks?\b",

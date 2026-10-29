@@ -1,13 +1,13 @@
 {
  "shield": {
-  "word_boundaries": false,
+  "word_boundaries": true,
   "normalize_text": false,
   "negation_guard": false,
   "chat_contact_only": true,
   "wfh_money_rules": true,
   "money_transfer_rules": false,
   "personal_email_cv": false,
-  "weak_signal_combo": 3
+  "weak_signal_combo": 0
  },
  "level": {
   "entry_words_win": true,

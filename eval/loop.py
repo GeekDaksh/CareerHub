@@ -7,6 +7,8 @@ JUDGE with the rule declared in eval/OBJECTIVE.md → LOG (eval/loop_log.jsonl +
 """
 import argparse
 import copy
+import hashlib
+import inspect
 import json
 import os
 import re
@@ -40,10 +42,38 @@ RULEBOOK = [
     ("level", "senior_words_ext", True, "detector", "senior leak: other senior title words"),
     ("level", "senior_from_desc", True, "detector", "senior leak: senior hints in the text"),
     ("level", "hide_not_stated", True, "threshold", "senior leak: level not stated"),
-    # v2 — refined by a person after reading the diagnosis of run 1 (v1 definitions: git commit fbfa1cc)
-    ("shield", "word_boundaries", True, "bugfix", "false block: partial-word match (v2 keeps 'data entry … home')", "v2"),
-    ("shield", "wfh_money_rules", True, "detector", "missed scam: earn-from-home promise (v2 without the noisy sub-rule)", "v2"),
 ]
+# Earlier rule definitions (v1: git fbfa1cc, v2: git 967ed68) were edited by a person after reading the
+# diagnosis. Their runs are kept in eval/archive/. Each entry now stores a fingerprint of the exact code it
+# tested, so a label can never claim one definition while the code ran another.
+
+
+def fingerprint(fam, key):
+    """Hash of the code that defines one switch. Changes whenever that switch's rule text changes."""
+    if fam == "level":
+        src = inspect.getsource(levels)
+    else:
+        part = {"word_boundaries": trust.STRICT_RULES, "chat_contact_only": trust.CHAT_CONTACT.pattern,
+                "negation_guard": [trust.NEGATION.pattern if hasattr(trust.NEGATION, "pattern") else trust.NEGATION,
+                                   trust.NEGATABLE],
+                "normalize_text": [trust.HOMOGLYPHS, inspect.getsource(trust.normalize)],
+                "weak_signal_combo": trust.WEAK_SIGNALS}.get(key)
+        if part is None:
+            part = trust.EXTRA_RULES[key]
+        src = json.dumps(part, default=str, sort_keys=True) + inspect.getsource(trust.scam_reasons)
+    return hashlib.sha1(src.encode()).hexdigest()[:10]
+
+
+def eligible(entries, fam, key, v, fp, cfg):
+    """OBJECTIVE.md: a rejected change may be retried at most twice, and only if something it depends on
+    changed since its last try: another switch in the same filter, or the rule's own definition."""
+    past = [e for e in entries if e["key"] == key and e["value"] == v]
+    if any(e["accepted"] for e in past) or len(past) >= 3:
+        return False
+    if not past:
+        return True
+    last = past[-1]
+    return last.get("family_cfg") != cfg or last.get("fingerprint") != fp
 
 
 # ---------------------------------------------------------------- evaluation per filter
@@ -171,7 +201,7 @@ def write_md(entries):
     for e in entries:
         b, a = e["before"], e["after"]
         fmt = lambda m: ", ".join(f"{k} {v}%" for k, v in m.items())
-        lines.append(f"| {e['iter']} | {e['family']} | `{e['key']}={e['value']}` {e.get('version', 'v1')} | {e['kind']} | {fmt(b)} | {fmt(a)} | "
+        lines.append(f"| {e['iter']} | {e['family']} | `{e['key']}={e['value']}` `{e.get('fingerprint', e.get('version', 'v1'))}` | {e['kind']} | {fmt(b)} | {fmt(a)} | "
                      f"**{'ACCEPT' if e['accepted'] else 'reject'}** | {e['why']} |")
     open(MD, "w").write("\n".join(lines) + "\n")
 
@@ -184,28 +214,29 @@ def main():
     ap.add_argument("--fresh", action="store_true")
     a = ap.parse_args()
     if a.fresh and os.path.exists(LOG):
-        shutil.move(LOG, LOG.replace(".jsonl", f".archived-{int(time.time())}.jsonl"))
+        arch = os.path.join(EV, "archive")
+        os.makedirs(arch, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+        shutil.move(LOG, os.path.join(arch, f"loop_log.{stamp}.jsonl"))
+        if os.path.exists(MD):
+            shutil.move(MD, os.path.join(arch, f"LOOP.{stamp}.md"))
     rows = H.load("train")                       # loop never touches the test split
     entries = [json.loads(l) for l in open(LOG)] if os.path.exists(LOG) else []
     cfg_s, cfg_l = copy.deepcopy(OFF_SHIELD), copy.deepcopy(OFF_LEVEL)
     for e in entries:                            # resume: replay accepted decisions
         if e["accepted"]:
             (cfg_s if e["family"] == "shield" else cfg_l)[e["key"]] = e["value"]
-    tries = {}
-    for e in entries:
-        t = (e["key"], json.dumps(e["value"]), e.get("version", "v1"))
-        tries[t] = tries.get(t, 0) + 1
 
     b_blocked, b_shown = eval_shield(rows, cfg_s), eval_level(rows, cfg_l)
     BASE.update(shield_stats(rows, eval_shield(rows, OFF_SHIELD)))
     queue = list(RULEBOOK)
     it = len(entries)
     while queue:
-        fam, key, values, kind, fixes, *ver = queue.pop(0)
-        ver = ver[0] if ver else "v1"
+        fam, key, values, kind, fixes = queue.pop(0)
         cfg = cfg_s if fam == "shield" else cfg_l
+        fp = fingerprint(fam, key)
         vals = values if isinstance(values, list) else [values]
-        vals = [v for v in vals if cfg.get(key) != v and tries.get((key, json.dumps(v), ver), 0) < 1 + 2]
+        vals = [v for v in vals if cfg.get(key) != v and eligible(entries, fam, key, v, fp, cfg)]
         if not vals:
             continue
         diag = diagnose(rows, b_blocked, b_shown, cfg_s, cfg_l)
@@ -227,9 +258,11 @@ def main():
                 best = (ok, score, v, nb, before, after, why, ev)
         ok, _, v, nb, before, after, why, ev = best
         it += 1
-        tries[(key, json.dumps(v), ver)] = tries.get((key, json.dumps(v), ver), 0) + 1
-        entry = {"iter": it, "family": fam, "key": key, "value": v, "version": ver, "kind": kind, "targets": fixes,
-                 "proposer": "rulebook" if ver == "v1" else "person (after reading the run-1 diagnosis)", "diagnosis": diag, "before": pct(before), "after": pct(after),
+        first = next((e for e in entries if e["key"] == key), None)
+        entry = {"iter": it, "family": fam, "key": key, "value": v, "fingerprint": fp, "family_cfg": copy.deepcopy(cfg),
+                 "kind": kind, "targets": fixes,
+                 "proposer": "rulebook" if first is None or first.get("fingerprint") == fp else "person (rule edited after diagnosis)",
+                 "diagnosis": diag, "before": pct(before), "after": pct(after),
                  "accepted": ok, "why": why, "evidence": ev}
         entries.append(entry)
         with open(LOG, "a") as f:
@@ -243,10 +276,8 @@ def main():
                 b_shown = nb
             # a change in this filter may make earlier rejected ideas work: retry them (max 2 retries each)
             for rb in RULEBOOK:
-                done_v2 = len(rb) > 5 and any(e.get("version") == rb[5] and e["key"] == rb[1] for e in entries)
-                if rb[0] == fam and rb[1] != key and any(e["key"] == rb[1] and not e["accepted"] for e in entries) \
-                        and rb not in queue and not done_v2:
-                    queue.append(rb)
+                if rb[0] == fam and rb[1] != key and rb not in queue:
+                    queue.append(rb)          # eligible() decides whether it really runs
     write_md(entries)
     json.dump({"shield": cfg_s, "level": cfg_l}, open(os.path.join(EV, "accepted_config.json"), "w"), indent=1)
     print("\nAccepted config:", json.dumps({"shield": cfg_s, "level": cfg_l}))
