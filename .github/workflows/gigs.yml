@@ -34,6 +34,9 @@ jobs:
       - name: Make sure the web app exists
         run: python deploy/deploy_space.py --ensure
       - run: python -m common.hfstore pull
+      - name: Learn from your feedback (versioned, tested lessons)
+        run: python -m common.feedback learn
+        continue-on-error: true
       - name: Find gigs
         run: python -m gigs.radar
       - name: Find entry-level jobs (alerts, careers pages, boards, job pages)
@@ -47,3 +50,4 @@ jobs:
         run: |
           python -m common.hfstore push gigs
           python -m common.hfstore push roles
+          python -m common.hfstore push lessons

@@ -40,7 +40,7 @@ def main(ensure_only=False):
         shutil.copytree(os.path.join(ROOT, "app"), tmp, dirs_exist_ok=True)   # server.py + static/ page
         shutil.copy(os.path.join(ROOT, "config.py"), tmp)
         os.makedirs(os.path.join(tmp, "common"), exist_ok=True)
-        for f in ("__init__.py", "settings.py", "apply.py", "trust.py"):          # shared logic the server needs
+        for f in ("__init__.py", "settings.py", "apply.py", "trust.py", "feedback.py"):   # shared logic the server needs
             shutil.copy(os.path.join(ROOT, "common", f), os.path.join(tmp, "common", f))
         api.upload_folder(folder_path=tmp, repo_id=space, repo_type="space", commit_message="deploy from GitHub")
 

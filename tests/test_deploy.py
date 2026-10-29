@@ -12,7 +12,7 @@ class FakeApi:
     def update_repo_settings(self, rid, **k): calls.append(("private", rid))
     def add_space_secret(self, rid, k, v): calls.append(("secret", k))
     def add_space_variable(self, rid, k, v): calls.append(("var", k, v))
-    def upload_folder(self, folder_path, repo_id, repo_type, commit_message): calls.append(("upload", repo_id, sorted(os.listdir(folder_path)), all(os.path.exists(os.path.join(folder_path, x)) for x in ("static/index.html", "server.py", "common/trust.py", "common/settings.py", "common/apply.py", "config.py"))))
+    def upload_folder(self, folder_path, repo_id, repo_type, commit_message): calls.append(("upload", repo_id, sorted(os.listdir(folder_path)), all(os.path.exists(os.path.join(folder_path, x)) for x in ("static/index.html", "server.py", "common/trust.py", "common/settings.py", "common/apply.py", "common/feedback.py", "config.py"))))
 import huggingface_hub; huggingface_hub.HfApi = FakeApi
 os.environ.update(HF_TOKEN="hf_x", GITHUB_REPOSITORY="GeekDaksh/career-hub")
 import importlib.util

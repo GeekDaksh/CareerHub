@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as C  # noqa: E402
 from common import llm  # noqa: E402
 from gigs import sources as S  # noqa: E402
-from common import gates, levels, settings as SETTINGS, trust  # noqa: E402
+from common import feedback as FB, gates, levels, settings as SETTINGS, trust  # noqa: E402
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
 GDIR = os.path.join(DATA_DIR, "gigs")
@@ -287,6 +287,7 @@ def run():
     notes = load("ai_notes.json", {})
     old = {g["id"]: g for g in load("gigs.json", {}).get("gigs", [])}
     prev_visible = sum(1 for g in old.values() if g.get("visible"))
+    lessons = FB.load_local(DATA_DIR)          # what Daksh taught the shield (common/feedback.py)
 
     raw = collect(state, health)
     max_age = C.MAX_GIG_AGE_DAYS * 86400
@@ -304,12 +305,16 @@ def run():
         seen[g["id"]] = g["first_seen"]
         g["eligibility"] = eligibility(g)
         g["category"] = category(g)
-        g["scam"] = scam_flags(g)
+        g["scam"], allowed_note = FB.apply(g, scam_flags(g), lessons)
         g["pay_inr"] = pay_inr(g)
         g["score"], g["why"] = score(g)
         g["level"] = levels.level(g["title"], g.get("desc"))
         board = g["source"] not in ("Freelancer.com", "Hacker News")
         g["trust"] = trust.check({**g, "source_kind": "freelance" if not board else "board"})
+        if allowed_note:
+            g["trust"] = {**g["trust"], "verdict": "unverified", "warn": allowed_note}
+        elif g["scam"] and g["trust"]["verdict"] != "risky":
+            g["trust"] = {**g["trust"], "verdict": "risky", "score": -5, "warn": g["scam"] + g["trust"]["warn"]}
         g["visible"] = (g["eligibility"] != "blocked" and not g["scam"] and g["category"] != "other"
                         # job boards: only contract / part-time / freelance here; full-time roles go to Career
                         and (not board or g["work_type"] in GIG_TYPES)

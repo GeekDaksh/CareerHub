@@ -25,7 +25,7 @@ from urllib.parse import urlparse, parse_qs
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as C  # noqa: E402
 from common import apply as AP  # noqa: E402
-from common import gates, levels, llm, settings as SETTINGS, trust  # noqa: E402
+from common import feedback as FB, gates, levels, llm, settings as SETTINGS, trust  # noqa: E402
 from common.search import Searcher  # noqa: E402
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
@@ -354,6 +354,7 @@ def run():
     s = SETTINGS.load(DATA_DIR)
     state, health = load("state.json", {}), load("health.json", {})
     old = {r["id"]: r for r in load("roles.json", {}).get("roles", [])}
+    lessons = FB.load_local(DATA_DIR)          # what Daksh taught the shield (common/feedback.py)
     raw = []
     for name, fn in [("Target companies", from_companies), ("Remote boards", from_boards)]:
         try:
@@ -382,7 +383,13 @@ def run():
         if not levels.allowed(r["level"]):
             senior += 1
             continue
-        r["trust"] = trust.check(r, r.get("company_domain"), r.get("company_verified", False))
+        t = trust.check(r, r.get("company_domain"), r.get("company_verified", False))
+        bad, allowed_note = FB.apply(r, t["warn"] if t["verdict"] == "risky" else [], lessons)
+        if bad:
+            t = {**t, "verdict": "risky", "score": -5, "warn": list(dict.fromkeys(bad + t["warn"]))}
+        elif allowed_note:
+            t = {**t, "verdict": "unverified", "score": 0, "warn": allowed_note}
+        r["trust"] = t
         if r["trust"]["verdict"] == "risky":
             blocked.append({"title": r["title"], "company": r.get("company"), "url": r["url"],
                             "platform": r.get("platform"), "why": r["trust"]["warn"]})

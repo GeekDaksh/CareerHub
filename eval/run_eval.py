@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config as C  # noqa: E402
 from common.config_check import validate  # noqa: E402
+from common import levels  # noqa: E402
 from eval import harness as H  # noqa: E402
 
 OFF_SHIELD = {k: (0 if isinstance(v, int) and not isinstance(v, bool) else False) for k, v in C.SHIELD.items()}
@@ -23,6 +24,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--baseline", action="store_true")
     ap.add_argument("--final", action="store_true", help="evaluate on the held-out TEST split (logged)")
+    ap.add_argument("--feedback", metavar="LESSONS_JSON", help="also score the level filter on your own 'wrong level' reports")
     a = ap.parse_args()
     validate()
     split = "test" if a.final else "train"
@@ -50,7 +52,12 @@ def main():
     for h in hard:
         if not (h["scam_ok"] and h["level_ok"]):
             print(f"   ✗ {h['id']} {h['title']!r}: blocked={h['blocked']} level={h['level']} {h['reasons']}")
+    if a.feedback and not a.final:     # personal set: a separate view, never mixed into EMSCAD numbers
+        cases = json.load(open(a.feedback)).get("level_cases", [])
+        ok = sum((levels.level(c["title"], "", lvl) != "senior") == (c["truth"] == "entry") for c in cases)
+        print(f"Your level reports: {ok}/{len(cases)} now decided the way you said" if cases else "No level reports yet")
     if a.final:
+        print("Learning: off — the evaluation never loads lessons (common/feedback.py is not imported here)")
         with open(os.path.join(EV, "test_runs.log"), "a") as f:
             f.write(json.dumps({"at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z",
                                 "shield": shield, "level": lvl, "metrics": m}) + "\n")

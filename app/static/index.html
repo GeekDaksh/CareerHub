@@ -52,6 +52,7 @@ h1,h2,h3,h4{margin:0;font-weight:500}
 .primary:hover{background:#fff}
 .mini{background:none;border:1px solid var(--line2);border-radius:999px;padding:4px 11px;font-size:13px;color:var(--dim);text-decoration:none}
 .mini:hover{border-color:var(--paper);color:var(--paper)}
+.mini.warnbtn{color:var(--D);border-color:rgba(244,159,146,.45)}.mini.warnbtn:hover{border-color:var(--D);color:var(--D)}
 .mini.on{background:var(--s2);color:var(--paper);border-color:var(--cream);font-weight:600}
 .dotlive::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--A);margin-right:2px;box-shadow:0 0 0 3px rgba(159,224,181,.15)}
 .dotlive.bad::before{background:var(--D);box-shadow:0 0 0 3px rgba(244,159,146,.15)}
@@ -289,6 +290,9 @@ function roleCard(r, compact) {
         <button class="mini ${s === "saved" ? "on" : ""}" data-act="role" data-id="${esc(r.id)}" data-s="saved">Save</button>
         <button class="mini" data-act="role" data-id="${esc(r.id)}" data-s="applied">Applied</button>
         <button class="mini" data-act="role" data-id="${esc(r.id)}" data-s="hidden" title="Hide">✕</button>
+        ${compact ? "" : `<button class="mini warnbtn" data-act="fb" data-kind="role" data-id="${esc(r.id)}" data-v="scam" title="Report this post as a scam">Report scam</button>
+        <button class="mini" data-act="fb" data-kind="role" data-id="${esc(r.id)}" data-v="senior" title="This job is really for experienced people">It's senior</button>
+        ${r.level !== "entry" ? `<button class="mini" data-act="fb" data-kind="role" data-id="${esc(r.id)}" data-v="entry" title="This job is really entry-level">It's entry</button>` : ""}`}
       </span></div></article>`;
 }
 
@@ -316,6 +320,7 @@ function gigCard(g, compact) {
         <button class="mini ${s === "saved" ? "on" : ""}" data-act="gig" data-id="${esc(g.id)}" data-s="saved">Save</button>
         <button class="mini" data-act="gig" data-id="${esc(g.id)}" data-s="bid">Bid sent</button>
         <button class="mini" data-act="gig" data-id="${esc(g.id)}" data-s="hidden" title="Hide">✕</button>
+        ${compact ? "" : `<button class="mini warnbtn" data-act="fb" data-kind="gig" data-id="${esc(g.id)}" data-v="scam" title="Report this gig as a scam">Report scam</button>`}
       </span></div></article>`;
 }
 
@@ -324,6 +329,13 @@ const ACT = {
   role: (d) => { const r = byId(D.roles, d.id); track("role:" + d.id, st("role:" + d.id) === d.s ? "" : d.s, r ? roleMeta(r) : undefined); },
   gig: (d) => { const g = byId(D.gigs, d.id); track("gig:" + d.id, st("gig:" + d.id) === d.s ? "" : d.s, g ? gigMeta(g) : undefined); },
   move: (d) => track(d.key, d.s),
+  async fb(d) {
+    try {
+      const r = await post("/api/feedback", {kind: d.kind, verdict: d.v, id: d.id, url: d.url});
+      if (d.v === "scam") D.tracker.items[d.kind + ":" + d.id] = {status: "hidden"};
+      D.lessons.reports += 1; render(); toast(r.message);
+    } catch (e) { toast("Couldn't send — try again", true); }
+  },
   howto(d) {
     const r = byId(D.roles, d.id); if (!r) return;
     const ref = r.referral;
@@ -609,9 +621,22 @@ function pageSafety() {
     <ol class="steps">${D.safety.map((r) => `<li><b>${esc(r.title)}</b><p>${esc(r.text)}</p></li>`).join("")}</ol>
     <div class="row" style="margin:18px 0"><a class="ghost" href="https://cybercrime.gov.in" target="_blank" rel="noopener">Report: cybercrime.gov.in ↗</a><span class="lock">Helpline 1930</span></div>
     <div class="bar-head"><h3>Blocked for you (${D.blocked.length})</h3></div>
-    <div class="tbl"><table><thead><tr><th>Post</th><th>Where</th><th>Why it was blocked</th></tr></thead><tbody>
-    ${D.blocked.map((b) => `<tr><td>${esc(b.title)}<br><span class="faint small">${esc(b.company || "")}</span></td><td class="dim">${esc(b.platform || "")}</td><td>${(b.why || []).map((w) => `<span class="tag bD">${esc(w)}</span>`).join(" ")}</td></tr>`).join("") || '<tr><td colspan="3" class="empty">Nothing blocked yet.</td></tr>'}
-    </tbody></table></div>`;
+    <div class="tbl"><table><thead><tr><th>Post</th><th>Where</th><th>Why it was blocked</th><th></th></tr></thead><tbody>
+    ${D.blocked.map((b) => `<tr><td>${esc(b.title)}<br><span class="faint small">${esc(b.company || "")}</span></td><td class="dim">${esc(b.platform || "")}</td><td>${(b.why || []).map((w) => `<span class="tag bD">${esc(w)}</span>`).join(" ")}</td><td><button class="mini" data-act="fb" data-kind="blocked" data-url="${esc(b.url)}" data-v="not_scam" title="Only if you checked the company yourself">Not a scam</button></td></tr>`).join("") || '<tr><td colspan="4" class="empty">Nothing blocked yet.</td></tr>'}
+    </tbody></table></div>
+    ${lessonsBlock()}`;
+}
+
+function lessonsBlock() {
+  const L = D.lessons || {};
+  const doms = Object.entries(L.block_domains || {});
+  const rf = Object.entries(L.rule_feedback || {});
+  return `<div class="bar-head"><h3>What the shield learned from you</h3><span class="faint small">version ${esc(L.version || 0)} · ${esc(L.reports || 0)} reports</span></div>
+    <p class="faint small">"Report scam" hides a post at once. A whole website is blocked only after you report ${2} different posts from it, you never marked one safe, and blocking it wouldn't hide verified jobs. Every change is versioned and can be undone.</p>
+    <div class="grid2"><article class="card"><h4>Blocked websites (${doms.length})</h4>${doms.map(([d, v]) => `<p class="flag warn">${esc(d)} · ${esc(v.votes)} reports</p>`).join("") || '<p class="faint small">None yet.</p>'}
+      ${(L.pending || []).map((p) => `<p class="flag">${esc(p.domain)}: ${esc(p.why)}</p>`).join("")}</article>
+      <article class="card"><h4>Rules that blocked posts you said were fine</h4>${rf.map(([w, n]) => `<p class="flag">${esc(w)} · ${esc(n)}×</p>`).join("") || '<p class="faint small">None yet.</p>'}
+      <p class="faint small">${esc(L.allowed || 0)} posts let through by you · ${esc(L.level_cases || 0)} level reports</p></article></div>`;
 }
 
 function pageStatus() {

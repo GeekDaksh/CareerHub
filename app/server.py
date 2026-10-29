@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 import config as C
 from common import apply as AP
+from common import feedback as FB
 from common import settings as SETTINGS
 from common import trust
 
@@ -135,8 +136,19 @@ def build():
         "health": {"gigs": jread("gigs/health.json", {}), "roles": jread("roles/health.json", {}),
                    "runs": jread("gigs/state.json", {}).get("runs", [])[-12:], "jobs": jread("jobs/run_status.json", {})},
         "tracker": jread("tracker/tracker.json", {"items": {}, "earnings": []}),
+        "lessons": lessons_view(),
         "github": GITHUB_REPO,
     }
+
+
+def lessons_view():
+    L = jread(FB.LESSONS_PATH, None) or FB.empty()
+    reps = jread(FB.REPORTS_PATH, {"reports": []}).get("reports", [])
+    return {"version": L.get("version", 0), "updated": L.get("updated"), "block_domains": L.get("block_domains", {}),
+            "pending": L.get("pending", []), "rule_feedback": L.get("rule_feedback", {}),
+            "allowed": len(L.get("allow_urls", [])), "hidden": len(L.get("hide_urls", [])),
+            "level_cases": len(L.get("level_cases", [])), "reports": len(reps),
+            "history": [{"version": h["version"], "at": h["at"], "changes": h["changes"][:6]} for h in L.get("history", [])][-8:]}
 
 
 def payload(fresh=False):
@@ -212,6 +224,49 @@ async def save_settings(req: Request):
     write_bytes(SETTINGS.SETTINGS_PATH, json.dumps(s, indent=1).encode(), "settings")
     payload(fresh=True)
     return {"ok": True, "settings": s}
+
+
+FEEDBACK_OK = {"gig": {"scam"}, "role": {"scam", "senior", "entry"}, "blocked": {"not_scam"}}
+
+
+@app.post("/api/feedback")
+async def feedback(req: Request):
+    """Report scam / not a scam / wrong level. The post is looked up in the server's own data, so a report can
+    only be about something the radars really found (a forged URL or domain is refused)."""
+    b = await req.json()
+    kind, verdict = str(b.get("kind", "")), str(b.get("verdict", ""))
+    if verdict not in FEEDBACK_OK.get(kind, set()):
+        raise HTTPException(400, "bad feedback")
+    item = None
+    if kind == "gig":
+        item = next((g for g in jread("gigs/gigs.json", {}).get("gigs", []) if g.get("id") == b.get("id")), None)
+    elif kind == "role":
+        item = next((r for r in jread("roles/roles.json", {}).get("roles", []) if r.get("id") == b.get("id")), None)
+    else:
+        item = next((x for x in payload()["blocked"] if x.get("url") == b.get("url")), None)
+    if not item:
+        raise HTTPException(404, "post not found")
+    try:
+        rep = FB.make_report(verdict, item if kind == "blocked" else {**item, "why": []}, kind)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    with LOCK:
+        doc = jread(FB.REPORTS_PATH, {"reports": []})
+        doc["reports"] = FB.add_report(doc.get("reports", []), rep)
+        write_bytes(FB.REPORTS_PATH, json.dumps(doc, ensure_ascii=False, indent=1).encode(), f"feedback {verdict}")
+    if verdict == "scam":   # hide it right away; the learner makes it permanent on the next run
+        t = jread("tracker/tracker.json", {"items": {}, "earnings": []})
+        key = f"{kind}:{item['id']}"
+        t["items"][key] = {**t["items"].get(key, {}), "status": "hidden",
+                           "updated": datetime.now(IST).isoformat(timespec="minutes"), "note": "reported as scam"}
+        save_tracker(t, "hide reported scam")
+    with LOCK:
+        if _cache["data"]:
+            _cache["data"]["lessons"]["reports"] += 1
+    return {"ok": True, "message": {"scam": "Reported — hidden now. The shield learns from it on the next run.",
+                                    "not_scam": "Thanks — it will show again on the next run, with a warning tag.",
+                                    "senior": "Noted — added to your level test set.",
+                                    "entry": "Noted — added to your level test set."}[verdict]}
 
 
 @app.get("/api/export.xlsx")
