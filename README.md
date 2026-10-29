@@ -66,7 +66,7 @@ The two filters were tested on **EMSCAD**, a public set of 17,880 real job ads (
 
 | Command | What it does | Time |
 |---|---|---|
-| `bash tests/run_all.sh` | every test: gates, feedback learning, both radars, deploy, 53 attack tests | ~3 min |
+| `bash tests/run_all.sh` | every test: gates, feedback learning, both radars, deploy, 53 attack tests | ~1 min |
 | `bash eval/fetch_emscad.sh` | download EMSCAD (pinned SHA-256) to `eval/.data/` | ~10 s |
 | `python -m eval.run_eval` | metrics on **train**, with 95 % ranges, change vs baseline and calibration | ~30 s |
 | `python -m eval.loop` | the improvement loop (train only, resumable, logged in `eval/LOOP.md`) | ~6 min |
