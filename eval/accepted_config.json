@@ -1,0 +1,21 @@
+{
+ "shield": {
+  "word_boundaries": false,
+  "normalize_text": false,
+  "negation_guard": false,
+  "chat_contact_only": true,
+  "wfh_money_rules": false,
+  "money_transfer_rules": false,
+  "personal_email_cv": false,
+  "weak_signal_combo": 3
+ },
+ "level": {
+  "entry_words_win": true,
+  "staff_needs_role": false,
+  "assistant_not_senior": false,
+  "years_patterns_ext": true,
+  "senior_words_ext": false,
+  "senior_from_desc": false,
+  "hide_not_stated": false
+ }
+}
