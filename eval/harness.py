@@ -85,7 +85,8 @@ def load(split):
         if split_of(r["job_id"]) != split:
             continue
         full = " ".join(clean(r[k]) for k in ("title", "company_profile", "description", "requirements", "benefits"))
-        out.append({"id": r["job_id"], "half": half_of(r["job_id"]), "title": clean(r["title"]),
+        camp = hashlib.sha1(re.sub(r"[^a-z]", "", (clean(r["description"]) or clean(r["title"])).lower())[:400].encode()).hexdigest()[:12]
+        out.append({"id": r["job_id"], "half": half_of(r["job_id"]), "title": clean(r["title"]), "cluster": camp,
                     "text": full, "level_text": clean(r["description"]) + " " + clean(r["requirements"]),
                     "fraud": r["fraudulent"] == "1", "exp": r["required_experience"]})
     return out
@@ -112,32 +113,49 @@ def rate(flags):
     return (sum(flags) / len(flags)) if flags else float("nan")
 
 
-def bootstrap(flags, n=1000, seed=7):
+def bootstrap(flags, n=1000, seed=7, clusters=None):
+    """95% range by resampling. With clusters, whole campaigns are resampled together (copies of one scam
+    campaign are not independent evidence, so this gives a wider, more honest range)."""
     if not flags:
         return (float("nan"), float("nan"))
     rnd = random.Random(seed)
-    k = len(flags)
-    vals = sorted(sum(flags[rnd.randrange(k)] for _ in range(k)) / k for _ in range(n))
+    if clusters is None:
+        k = len(flags)
+        vals = sorted(sum(flags[rnd.randrange(k)] for _ in range(k)) / k for _ in range(n))
+    else:
+        groups = {}
+        for f, c in zip(flags, clusters):
+            groups.setdefault(c, []).append(f)
+        g = list(groups.values())
+        vals = []
+        for _ in range(n):
+            pick = [g[rnd.randrange(len(g))] for _ in range(len(g))]
+            tot = sum(len(x) for x in pick)
+            vals.append(sum(sum(x) for x in pick) / tot)
+        vals.sort()
     return vals[int(0.025 * n)], vals[int(0.975 * n) - 1]
 
 
 def metrics(rows, preds):
-    scam = [p["blocked"] for r, p in zip(rows, preds) if r["fraud"]]
-    legit = [p["blocked"] for r, p in zip(rows, preds) if not r["fraud"]]
-    senior = [p["shown"] for r, p in zip(rows, preds) if r["exp"] in SENIOR_LABELS and not r["fraud"]]
-    entry = [not p["shown"] for r, p in zip(rows, preds) if r["exp"] in ENTRY_LABELS and not r["fraud"]]
+    def pick(cond, val):
+        sel = [(val(p), r.get("cluster", r.get("id", i))) for i, (r, p) in enumerate(zip(rows, preds)) if cond(r)]
+        return [x for x, _ in sel], [c for _, c in sel]
+    scam = pick(lambda r: r["fraud"], lambda p: p["blocked"])
+    legit = pick(lambda r: not r["fraud"], lambda p: p["blocked"])
+    senior = pick(lambda r: r["exp"] in SENIOR_LABELS and not r["fraud"], lambda p: p["shown"])
+    entry = pick(lambda r: r["exp"] in ENTRY_LABELS and not r["fraud"], lambda p: not p["shown"])
     return {
-        "catch_rate": card(scam, "Share of real scam posts the shield blocks", higher_better=True),
-        "false_block": card(legit, "Share of real (non-scam) posts wrongly blocked", higher_better=False),
-        "senior_leak": card(senior, "Share of senior jobs that still reach you", higher_better=False),
-        "entry_loss": card(entry, "Share of real entry-level jobs wrongly hidden", higher_better=False),
+        "catch_rate": card(*scam, "Share of real scam posts the shield blocks", higher_better=True),
+        "false_block": card(*legit, "Share of real (non-scam) posts wrongly blocked", higher_better=False),
+        "senior_leak": card(*senior, "Share of senior jobs that still reach you", higher_better=False),
+        "entry_loss": card(*entry, "Share of real entry-level jobs wrongly hidden", higher_better=False),
     }
 
 
-def card(flags, meaning, higher_better):
-    lo, hi = bootstrap(flags)
-    return {"value": rate(flags), "n": len(flags), "hits": sum(flags), "ci95": [lo, hi], "meaning": meaning,
-            "higher_is_better": higher_better}
+def card(flags, clusters, meaning, higher_better):
+    lo, hi = bootstrap(flags, clusters=clusters)
+    return {"value": rate(flags), "n": len(flags), "campaigns": len(set(clusters)), "hits": sum(flags), "ci95": [lo, hi],
+            "meaning": meaning, "higher_is_better": higher_better, "range_method": "campaign (cluster) bootstrap"}
 
 
 def compare(new, base):
@@ -167,5 +185,5 @@ def fmt(m):
     for k, c in m.items():
         d = f"  Δ {c['delta_vs_baseline']*100:+.1f} pp{' (could be luck)' if c.get('ranges_overlap') else ' (real change)'}" \
             if "delta_vs_baseline" in c else ""
-        lines.append(f"{k:12s} {c['value']*100:6.2f}%  [{c['ci95'][0]*100:.2f}–{c['ci95'][1]*100:.2f}]  n={c['n']:5d}{d}  — {c['meaning']}")
+        lines.append(f"{k:12s} {c['value']*100:6.2f}%  [{c['ci95'][0]*100:.2f}–{c['ci95'][1]*100:.2f}]  n={c['n']:5d} ({c.get('campaigns','?')} campaigns){d}  — {c['meaning']}")
     return "\n".join(lines)
