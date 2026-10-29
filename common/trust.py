@@ -91,7 +91,7 @@ STRICT_RULES = [
     (r"\bearn\s+(rs\.?|₹|inr|\$)\s?\d[\d,]*\s*(per|a|/)\s*(day|week)\b|\bdaily (payment|payout|income)\b|"
      r"\bweekly payout guaranteed\b", "promises fixed daily/weekly earnings"),
     (r"\btyping jobs?\b|\bcopy[- ]?paste (jobs?|work)\b|\bsms sending\b|\bform filling (jobs?|work)\b|"
-     r"\bcaptcha (entry|typing|jobs?)\b|\bdata entry\b.{0,40}\b(from home|mobile|daily)\b|\bad posting jobs?\b|"
+     r"\bcaptcha (entry|typing|jobs?)\b|\bdata entry\b.{0,40}\b(home|mobile|daily)\b|\bad posting jobs?\b|"
      r"\bmobile (based )?jobs?\b(?! board)|\bpart[- ]time jobs?\b.{0,40}\b(daily|per day)\b", "typing / data-entry-from-home pattern"),
     (r"\blike (and |& )?(subscribe|share)\b|\blike (our )?(posts|videos)\b|\brate (hotels|products|apps)\b|"
      r"\breview (products|hotels) for (cash|money)\b|\btask[- ]based (earning|income)\b|\bprepaid tasks?\b",
@@ -117,8 +117,8 @@ CHAT_CONTACT = re.compile(
     r"|\b(whatsapp|telegram)\s*(hr|recruiter|number|no\.?)\b|\b(whatsapp|telegram)[^a-z]{0,5}\+?\d[\d\s-]{7,}"
     r"|wa\.me|t\.me/|chat\.whatsapp\.com", re.I)
 EXTRA_RULES = {
-    "wfh_money_rules": [(r"(work|working) (from|at) home.{0,120}?(earn|\$\s?\d|₹\s?\d|rs\.?\s?\d|income|paid (daily|weekly))"
-                         r"|earn (up to |upto )?(\$|₹|rs\.?|inr)\s?\d[\d,]*\+?\s*(per|a|/|every)\s*(week|day|hour)"
+    # v2: dropped "work from home … income" (it hit 15 scams AND 15 real jobs on train, see eval/LOOP.md)
+    "wfh_money_rules": [(r"earn (up to |upto )?(\$|₹|rs\.?|inr)\s?\d[\d,]*\+?\s*(per|a|/|every)\s*(week|day|hour)"
                          r"|no experience (necessary|needed|required).{0,80}?(earn|\$\s?\d|₹|income)"
                          r"|home[- ]based (job|work|business)|be your own boss|extra income from home",
                          "earn-from-home money promise")],

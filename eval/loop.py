@@ -40,6 +40,9 @@ RULEBOOK = [
     ("level", "senior_words_ext", True, "detector", "senior leak: other senior title words"),
     ("level", "senior_from_desc", True, "detector", "senior leak: senior hints in the text"),
     ("level", "hide_not_stated", True, "threshold", "senior leak: level not stated"),
+    # v2 — refined by a person after reading the diagnosis of run 1 (v1 definitions: git commit fbfa1cc)
+    ("shield", "word_boundaries", True, "bugfix", "false block: partial-word match (v2 keeps 'data entry … home')", "v2"),
+    ("shield", "wfh_money_rules", True, "detector", "missed scam: earn-from-home promise (v2 without the noisy sub-rule)", "v2"),
 ]
 
 
@@ -168,7 +171,7 @@ def write_md(entries):
     for e in entries:
         b, a = e["before"], e["after"]
         fmt = lambda m: ", ".join(f"{k} {v}%" for k, v in m.items())
-        lines.append(f"| {e['iter']} | {e['family']} | `{e['key']}={e['value']}` | {e['kind']} | {fmt(b)} | {fmt(a)} | "
+        lines.append(f"| {e['iter']} | {e['family']} | `{e['key']}={e['value']}` {e.get('version', 'v1')} | {e['kind']} | {fmt(b)} | {fmt(a)} | "
                      f"**{'ACCEPT' if e['accepted'] else 'reject'}** | {e['why']} |")
     open(MD, "w").write("\n".join(lines) + "\n")
 
@@ -190,17 +193,19 @@ def main():
             (cfg_s if e["family"] == "shield" else cfg_l)[e["key"]] = e["value"]
     tries = {}
     for e in entries:
-        tries[(e["key"], json.dumps(e["value"]))] = tries.get((e["key"], json.dumps(e["value"])), 0) + 1
+        t = (e["key"], json.dumps(e["value"]), e.get("version", "v1"))
+        tries[t] = tries.get(t, 0) + 1
 
     b_blocked, b_shown = eval_shield(rows, cfg_s), eval_level(rows, cfg_l)
     BASE.update(shield_stats(rows, eval_shield(rows, OFF_SHIELD)))
     queue = list(RULEBOOK)
     it = len(entries)
     while queue:
-        fam, key, values, kind, fixes = queue.pop(0)
+        fam, key, values, kind, fixes, *ver = queue.pop(0)
+        ver = ver[0] if ver else "v1"
         cfg = cfg_s if fam == "shield" else cfg_l
         vals = values if isinstance(values, list) else [values]
-        vals = [v for v in vals if cfg.get(key) != v and tries.get((key, json.dumps(v)), 0) < 1 + 2]
+        vals = [v for v in vals if cfg.get(key) != v and tries.get((key, json.dumps(v), ver), 0) < 1 + 2]
         if not vals:
             continue
         diag = diagnose(rows, b_blocked, b_shown, cfg_s, cfg_l)
@@ -222,9 +227,9 @@ def main():
                 best = (ok, score, v, nb, before, after, why, ev)
         ok, _, v, nb, before, after, why, ev = best
         it += 1
-        tries[(key, json.dumps(v))] = tries.get((key, json.dumps(v)), 0) + 1
-        entry = {"iter": it, "family": fam, "key": key, "value": v, "kind": kind, "targets": fixes,
-                 "proposer": "rulebook", "diagnosis": diag, "before": pct(before), "after": pct(after),
+        tries[(key, json.dumps(v), ver)] = tries.get((key, json.dumps(v), ver), 0) + 1
+        entry = {"iter": it, "family": fam, "key": key, "value": v, "version": ver, "kind": kind, "targets": fixes,
+                 "proposer": "rulebook" if ver == "v1" else "person (after reading the run-1 diagnosis)", "diagnosis": diag, "before": pct(before), "after": pct(after),
                  "accepted": ok, "why": why, "evidence": ev}
         entries.append(entry)
         with open(LOG, "a") as f:
@@ -238,8 +243,9 @@ def main():
                 b_shown = nb
             # a change in this filter may make earlier rejected ideas work: retry them (max 2 retries each)
             for rb in RULEBOOK:
+                done_v2 = len(rb) > 5 and any(e.get("version") == rb[5] and e["key"] == rb[1] for e in entries)
                 if rb[0] == fam and rb[1] != key and any(e["key"] == rb[1] and not e["accepted"] for e in entries) \
-                        and rb not in queue:
+                        and rb not in queue and not done_v2:
                     queue.append(rb)
     write_md(entries)
     json.dump({"shield": cfg_s, "level": cfg_l}, open(os.path.join(EV, "accepted_config.json"), "w"), indent=1)
