@@ -195,7 +195,9 @@ AI_PLATFORMS = [
 # the rest were measured and rejected — see the log for the numbers.
 SHIELD = {
     "word_boundaries": True,       # bug fix: match whole words only ('demonstrate products' is not 'rate products')
-    "normalize_text": False,        # undo tricks: 'W h a t s A p p', zero-width characters, look-alike letters
+    "normalize_text": True,         # undo tricks: 'W h a t s A p p', zero-width characters, look-alike letters
+                                    #   ON as a red-team fix (eval/REDTEAM.md): no change on 10,802 EMSCAD train posts,
+                                    #   blocks 5 evasion attacks. Not a loop acceptance — the loop found no EMSCAD evidence.
     "negation_guard": False,        # 'no registration fee' / 'we never charge money' must not count as a fee demand
     "chat_contact_only": True,     # WhatsApp/Telegram counts only as a contact channel, not a product ('WhatsApp chatbot' gigs)
     "wfh_money_rules": True,       # classic 'earn $X a week from home, no experience' pattern

@@ -217,7 +217,7 @@ const store = {get(k, d) { try { const v = localStorage.getItem(k); return v ? J
                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
 function toast(msg, bad) { const t = $("#toast"); t.textContent = msg; t.className = "toast show" + (bad ? " bad" : ""); clearTimeout(t._t); t._t = setTimeout(() => t.className = "toast", 2600); }
 async function post(path, body) {
-  const r = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const r = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json", "X-Career-Hub": "1"}, body: JSON.stringify(body)});
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -643,7 +643,7 @@ function pageStatus() {
   const rows = (obj, side) => Object.entries(obj || {}).map(([k, v]) => `<tr><td>${esc(side)}</td><td>${esc(k)}</td><td>${v.ok ? '<span class="tA">● working</span>' : '<span class="tD">● down</span>'}</td><td>${esc(v.count ?? "")}</td><td class="dim">${esc(ago(v.at))}</td><td class="faint small">${esc(v.error || "")}</td></tr>`).join("");
   const j = D.health.jobs || {};
   return `<div class="page-head"><h2>Status</h2><p>Everything runs by itself on a schedule. A source marked down usually fixes itself on the next run, and the others keep working.</p></div>
-    <div class="tbl"><table><thead><tr><th>Side</th><th>Source</th><th>State</th><th>Items</th><th>Checked</th><th>Note</th></tr></thead><tbody>${rows(D.health.gigs, "Freelance")}${rows(D.health.roles, "Career")}</tbody></table></div>
+    <div class="tbl"><table><thead><tr><th>Side</th><th>Source</th><th>State</th><th>Items</th><th>Checked</th><th>Note</th></tr></thead><tbody>${rows(D.health.gigs, "Freelance")}${rows(D.health.roles, "Career")}${Object.entries(D.health.files || {}).map(([k, v]) => `<tr><td>Data</td><td>${esc(k)}</td><td><span class="tD">● broken</span></td><td></td><td></td><td class="faint small">${esc(v)} — the next run rewrites it</td></tr>`).join("")}</tbody></table></div>
     <div class="bar-head"><h3>Company finder</h3></div>
     <div class="kpis"><div class="kpi"><span class="k">Last run</span><b style="font-size:22px">${esc(j.finished_ist || "not yet")}</b></div>
       <div class="kpi"><span class="k">Companies profiled</span><b>${esc(j.profiled ?? 0)}</b></div>
@@ -663,7 +663,7 @@ function render() {
   $("#tabs").innerHTML = TABS[ws] ? TABS[ws].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${k === S.tab}">${l}</button>`).join("") : `<button role="tab" aria-selected="true">${esc(ws[0].toUpperCase() + ws.slice(1))}</button>`;
   document.querySelectorAll("[data-go]").forEach((b) => b.classList.toggle("on", b.dataset.go === ws));
   $("#view").innerHTML = (VIEWS[ws][S.tab] || Object.values(VIEWS[ws])[0])();
-  const anyDown = [...Object.values(D.health.gigs || {}), ...Object.values(D.health.roles || {})].some((v) => !v.ok);
+  const anyDown = [...Object.values(D.health.gigs || {}), ...Object.values(D.health.roles || {})].some((v) => !v.ok) || Object.keys(D.health.files || {}).length > 0;
   $("#statusBtn").classList.toggle("bad", anyDown);
 }
 async function load(fresh) {

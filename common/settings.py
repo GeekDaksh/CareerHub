@@ -13,8 +13,8 @@ def clean(raw):
     s = dict(C.DEFAULT_SETTINGS)
     if isinstance(raw, dict):
         for k in s:
-            if isinstance(raw.get(k), list):
-                s[k] = raw[k]
+            if isinstance(raw.get(k), list):     # keep only short text items, no duplicates
+                s[k] = list(dict.fromkeys(x for x in raw[k][:200] if isinstance(x, str) and len(x) < 80))
     s["main_sectors"] = [x for x in s["main_sectors"] if x in C.SECTOR_CATALOG] or list(C.DEFAULT_SETTINGS["main_sectors"])
     s["other_sectors"] = [x for x in s["other_sectors"] if x in C.SECTOR_CATALOG and x not in s["main_sectors"]]
     s["locations"] = [x for x in s["locations"] if x in C.CITY_OPTIONS + C.REMOTE_OPTIONS] or list(C.DEFAULT_SETTINGS["locations"])

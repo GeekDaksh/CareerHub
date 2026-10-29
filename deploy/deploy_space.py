@@ -28,10 +28,16 @@ def main(ensure_only=False):
         return
     api.create_repo(data_repo, repo_type="dataset", private=True, exist_ok=True)
     api.create_repo(space, repo_type="space", space_sdk="docker", private=True, exist_ok=True)
-    try:   # make sure it stays private even if it was created by hand
-        api.update_repo_settings(space, private=True, repo_type="space")
-    except Exception:
-        pass
+    # The data holds founders' contacts and your tracker. Never upload the app or the token unless BOTH the
+    # Space and the dataset are confirmed private (a hand-made public Space would show everything).
+    for rid, kind in ((space, "space"), (data_repo, "dataset")):
+        try:
+            api.update_repo_settings(rid, private=True, repo_type=kind)
+        except Exception as e:
+            print(f"deploy: could not set {kind} {rid} private ({e}) — checking its state")
+        if not getattr(api.repo_info(rid, repo_type=kind), "private", False):
+            print(f"deploy: STOPPED — {kind} {rid} is PUBLIC. Make it private on huggingface.co, then re-run.")
+            sys.exit(1)
     api.add_space_secret(space, "HF_TOKEN", token)
     api.add_space_variable(space, "DATA_REPO", data_repo)
     api.add_space_variable(space, "GITHUB_REPO", os.environ.get("GITHUB_REPOSITORY", ""))

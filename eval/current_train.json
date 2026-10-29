@@ -114,7 +114,7 @@
  },
  "shield": {
   "word_boundaries": true,
-  "normalize_text": false,
+  "normalize_text": true,
   "negation_guard": false,
   "chat_contact_only": true,
   "wfh_money_rules": true,

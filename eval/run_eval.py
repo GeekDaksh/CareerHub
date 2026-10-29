@@ -29,12 +29,16 @@ def main():
     validate()
     split = "test" if a.final else "train"
     shield, lvl = (OFF_SHIELD, OFF_LEVEL) if a.baseline else (C.SHIELD, C.LEVEL)
-    rows = H.load(split)
+    rows = H.load(split, final=a.final)
     preds = H.predict(rows, shield, lvl)
     m = H.metrics(rows, preds)
     base_path = os.path.join(EV, f"baseline_{split}.json")
     if a.baseline:
         json.dump({"metrics": m, "shield": shield, "level": lvl}, open(base_path, "w"), indent=1)
+    elif a.final:      # baseline on test, scored in the same single run, for an honest before/after
+        bp = H.predict(rows, OFF_SHIELD, OFF_LEVEL)
+        base_test = H.metrics(rows, bp)
+        H.compare(m, base_test, H.paired_delta(rows, bp, preds))
     elif os.path.exists(base_path):
         bj = json.load(open(base_path))
         paired = H.paired_delta(rows, H.predict(rows, bj["shield"], bj["level"]), preds)
@@ -56,12 +60,18 @@ def main():
         cases = json.load(open(a.feedback)).get("level_cases", [])
         ok = sum((levels.level(c["title"], "", lvl) != "senior") == (c["truth"] == "entry") for c in cases)
         print(f"Your level reports: {ok}/{len(cases)} now decided the way you said" if cases else "No level reports yet")
+    unseen = None
     if a.final:
+        un = H.unseen_campaigns(rows, H.load("train"))
+        unseen = H.metrics(un, H.predict(un, shield, lvl))
+        print(f"\n== TEST, only campaigns never seen in train · {len(un)} posts "
+              f"({sum(r['fraud'] for r in un)} scams) — the stricter number")
+        print(H.fmt(unseen))
         print("Learning: off — the evaluation never loads lessons (common/feedback.py is not imported here)")
         with open(os.path.join(EV, "test_runs.log"), "a") as f:
             f.write(json.dumps({"at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z",
-                                "shield": shield, "level": lvl, "metrics": m}) + "\n")
-        json.dump({"metrics": m, "calibration": cal, "shield": shield, "level": lvl, "hard": hard},
+                                "shield": shield, "level": lvl, "metrics": m, "baseline": base_test, "unseen_campaigns": unseen}) + "\n")
+        json.dump({"metrics": m, "baseline": base_test, "unseen_campaigns": unseen, "calibration": cal, "shield": shield, "level": lvl, "hard": hard},
                   open(os.path.join(EV, "final_test.json"), "w"), indent=1)
         print("Logged to eval/test_runs.log")
 

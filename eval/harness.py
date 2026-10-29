@@ -53,10 +53,13 @@ def clean(s):
     return re.sub(r"\s+", " ", str(s or "")).strip()
 
 
-def load(split):
-    """G1 data gate: file hash, row and label counts, unique ids, no train/test overlap, frozen hard set unchanged."""
+def load(split, final=False):
+    """G1 data gate: file hash, row and label counts, unique ids, no train/test overlap, frozen hard set unchanged.
+    The test split opens only with final=True, which only `python -m eval.run_eval --final` passes (and logs)."""
     if split not in ("train", "test"):
         raise GateError("split must be train or test")
+    if split == "test" and not final:
+        raise GateError("the test split is locked — only `python -m eval.run_eval --final` may open it")
     if not os.path.exists(DATA):
         raise GateError(f"EMSCAD missing at {DATA} — run: bash eval/fetch_emscad.sh")
     if sha256(DATA) != EMSCAD_SHA:
@@ -90,6 +93,13 @@ def load(split):
                     "text": full, "level_text": clean(r["description"]) + " " + clean(r["requirements"]),
                     "fraud": r["fraudulent"] == "1", "exp": r["required_experience"]})
     return out
+
+
+def unseen_campaigns(test_rows, train_rows):
+    """Test posts whose campaign (same opening text) never appears in train. EMSCAD repeats scam campaigns, so a
+    rule tuned on train may 'catch' a test copy of a train scam. Scoring only unseen campaigns removes that help."""
+    seen = {r["cluster"] for r in train_rows}
+    return [r for r in test_rows if r["cluster"] not in seen]
 
 
 def load_hard():

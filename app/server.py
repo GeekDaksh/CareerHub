@@ -3,10 +3,12 @@ Serves the single-page app and a small JSON API over the private dataset."""
 import csv
 import io
 import json
+import math
 import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -27,6 +29,35 @@ LOCK = threading.Lock()
 _cache = {"at": 0, "data": None}
 
 app = FastAPI(docs_url=None, redoc_url=None)
+MAX_BODY = 64 * 1024           # no request needs more than this
+MAX_TRACKED = 5000             # tracker items
+FRESH_EVERY = 60               # a forced reload rebuilds the data at most once a minute
+
+
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    """Defence for every POST: (1) only JSON, (2) only from this app's own page (custom header + same origin),
+    so another website open in the same browser can't send requests with Daksh's login; (3) size limit."""
+    if request.method == "POST":
+        if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
+            return JSONResponse({"detail": "JSON only"}, status_code=415)
+        if request.headers.get("x-career-hub") != "1":
+            return JSONResponse({"detail": "missing app header"}, status_code=403)
+        origin = request.headers.get("origin")
+        if origin and urlparse(origin).netloc != request.headers.get("host", ""):
+            return JSONResponse({"detail": "cross-site request"}, status_code=403)
+        try:
+            if int(request.headers.get("content-length") or 0) > MAX_BODY:
+                return JSONResponse({"detail": "request too large"}, status_code=413)
+        except ValueError:
+            return JSONResponse({"detail": "bad length"}, status_code=400)
+        body = b""
+        async for chunk in request.stream():
+            body += chunk
+            if len(body) > MAX_BODY:
+                return JSONResponse({"detail": "request too large"}, status_code=413)
+        request._body = body
+    return await call_next(request)
 
 
 # ------------------------------------------------------------------ storage
@@ -58,11 +89,17 @@ def write_bytes(path, data, msg):
             f.write(data)
 
 
+READ_ERRORS = {}
+
+
 def jread(path, default):
     b = read_bytes(path)
     try:
-        return json.loads(b) if b else default
-    except Exception:
+        v = json.loads(b) if b else default
+        READ_ERRORS.pop(path, None)
+        return v
+    except Exception as e:      # a broken file must not take the app down — but it must be visible
+        READ_ERRORS[path] = f"unreadable: {type(e).__name__}"
         return default
 
 
@@ -134,7 +171,8 @@ def build():
         "companies": companies, "platforms": C.AI_PLATFORMS, "playbook": pb, "links": links,
         "safety": [{"title": t, "text": x} for t, x in trust.SAFETY_RULES],
         "health": {"gigs": jread("gigs/health.json", {}), "roles": jread("roles/health.json", {}),
-                   "runs": jread("gigs/state.json", {}).get("runs", [])[-12:], "jobs": jread("jobs/run_status.json", {})},
+                   "runs": jread("gigs/state.json", {}).get("runs", [])[-12:], "jobs": jread("jobs/run_status.json", {}),
+                   "files": dict(READ_ERRORS)},
         "tracker": jread("tracker/tracker.json", {"items": {}, "earnings": []}),
         "lessons": lessons_view(),
         "github": GITHUB_REPO,
@@ -151,9 +189,10 @@ def lessons_view():
             "history": [{"version": h["version"], "at": h["at"], "changes": h["changes"][:6]} for h in L.get("history", [])][-8:]}
 
 
-def payload(fresh=False):
+def payload(fresh=False, force=False):
     with LOCK:
-        if fresh or not _cache["data"] or time.time() - _cache["at"] > 300:
+        age = time.time() - _cache["at"]
+        if force or not _cache["data"] or age > 300 or (fresh and age > FRESH_EVERY):
             _cache["data"], _cache["at"] = build(), time.time()
         return _cache["data"]
 
@@ -190,6 +229,12 @@ async def track(req: Request):
     if kind not in ALLOWED or status not in ALLOWED[kind] or len(key) > 300:
         raise HTTPException(400, "bad status")
     t = jread("tracker/tracker.json", {"items": {}, "earnings": []})
+    if not status and key in t["items"] and not t["items"][key].get("note"):
+        del t["items"][key]                       # clearing a status frees its slot
+        save_tracker(t, f"track {kind}")
+        return {"ok": True, "item": {}}
+    if key not in t["items"] and len(t["items"]) >= MAX_TRACKED:
+        raise HTTPException(400, "tracker full")
     item = t["items"].get(key, {})
     item.update({"status": status, "updated": datetime.now(IST).isoformat(timespec="minutes")})
     if isinstance(b.get("meta"), dict):
@@ -206,6 +251,8 @@ async def earning(req: Request):
     b = await req.json()
     try:
         amt = float(b.get("amount_inr"))
+        if not math.isfinite(amt):
+            raise ValueError
         datetime.strptime(str(b.get("date")), "%Y-%m-%d")
     except Exception:
         raise HTTPException(400, "bad earning")
@@ -222,7 +269,7 @@ async def earning(req: Request):
 async def save_settings(req: Request):
     s = SETTINGS.clean(await req.json())
     write_bytes(SETTINGS.SETTINGS_PATH, json.dumps(s, indent=1).encode(), "settings")
-    payload(fresh=True)
+    payload(force=True)
     return {"ok": True, "settings": s}
 
 

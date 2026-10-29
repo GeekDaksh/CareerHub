@@ -10,6 +10,7 @@ class FakeApi:
     def repo_exists(self, rid, repo_type=None): calls.append(("exists", rid)); return EXISTS
     def create_repo(self, rid, **k): calls.append(("create", rid, k.get("repo_type"), k.get("private"), k.get("space_sdk")))
     def update_repo_settings(self, rid, **k): calls.append(("private", rid))
+    def repo_info(self, rid, repo_type=None): return types.SimpleNamespace(private=True)
     def add_space_secret(self, rid, k, v): calls.append(("secret", k))
     def add_space_variable(self, rid, k, v): calls.append(("var", k, v))
     def upload_folder(self, folder_path, repo_id, repo_type, commit_message): calls.append(("upload", repo_id, sorted(os.listdir(folder_path)), all(os.path.exists(os.path.join(folder_path, x)) for x in ("static/index.html", "server.py", "common/trust.py", "common/settings.py", "common/apply.py", "common/feedback.py", "config.py"))))

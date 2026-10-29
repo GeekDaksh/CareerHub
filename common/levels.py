@@ -23,12 +23,9 @@ SENIOR_DESC = re.compile(r"\b(seasoned|extensive (?:professional |industry )?exp
 def level(title, desc="", opts=None):
     """'entry' (fresher/junior/intern), 'senior' (hide), or 'not stated' (shown, marked 'check level').
     opts = config.LEVEL-style switches (defaults: config)."""
-    if opts is None:
-        try:
-            import config as _C
-            opts = _C.LEVEL
-        except Exception:
-            opts = {}
+    if opts is None:     # no silent fallback (see trust.scam_reasons)
+        import config as _C
+        opts = _C.LEVEL
     lv = _level(title, desc, opts)
     if lv == "not stated" and opts.get("hide_not_stated"):
         return "senior"

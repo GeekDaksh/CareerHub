@@ -148,6 +148,7 @@ def normalize(t):
     t = unicodedata.normalize("NFKC", t).translate(HOMOGLYPHS)
     t = re.sub(r"[​-‏⁠﻿]", "", t)
     t = re.sub(r"\b(?:[A-Za-z] ){3,}[A-Za-z]\b", lambda m: m.group(0).replace(" ", ""), t)   # 'W h a t s A p p'
+    t = re.sub(r"\b(?:[A-Za-z][.\-_*] ?){4,}[A-Za-z]\b", lambda m: re.sub(r"[.\-_* ]", "", m.group(0)), t)  # 'T.e.l.e.g.r.a.m'
     t = re.sub(r"\bw\s?h?a\s?t+s?\s?a\s?p+\b|\bwatsapp\b|\bwhtsapp\b|\bwhatsap\b", "whatsapp", t, flags=re.I)
     t = re.sub(r"\btele\s?gram\b|\btelegrm\b", "telegram", t, flags=re.I)
     return t
@@ -155,12 +156,9 @@ def normalize(t):
 
 def scam_reasons(text, shield=None):
     """Scam signs found in a post, as plain-language reasons. shield = config.SHIELD-style switches (defaults: config)."""
-    if shield is None:
-        try:
-            import config as _C
-            shield = _C.SHIELD
-        except Exception:
-            shield = {}
+    if shield is None:   # no silent fallback: if config can't load, fail loudly instead of switching rules off
+        import config as _C
+        shield = _C.SHIELD
     t = str(text or "")[:20000]
     if shield.get("normalize_text"):
         t = normalize(t)

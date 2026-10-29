@@ -18,6 +18,8 @@ def chk(c, m):
 
 def mail(frm, subject, html):
     m = MIMEMultipart("alternative"); m["From"] = frm; m["Subject"] = subject; m["Date"] = email.utils.formatdate()
+    dom = email.utils.parseaddr(frm)[1].split("@")[-1]   # what Gmail adds to every genuine, signed email
+    m["Authentication-Results"] = f"mx.google.com; dkim=pass header.i=@{dom} header.s=s1; spf=pass; dmarc=pass"
     m["Message-ID"] = f"<{abs(hash(subject))}@x>"; m.attach(MIMEText(html, "html")); return m.as_bytes()
 MAILS = [
  mail("LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>", "Machine Learning Engineer in Bengaluru",
@@ -94,11 +96,11 @@ chk(c.get("/").status_code == 200 and "Career" in c.get("/").text, "page served"
 chk(len(d["roles"]) > 0 and len(d["gigs"]) > 0 and len(d["companies"]) > 0, f"payload: {len(d['roles'])} roles, {len(d['gigs'])} gigs, {len(d['companies'])} companies")
 chk(d["settings"]["experience"] == "Fresher / entry-level" and d["settings"]["roles"] == ["Data Scientist"], "settings in payload")
 chk(any(l["links"][0][1].startswith("https://www.linkedin.com/jobs/search/") and "f_E=1%2C2" in l["links"][0][1] for l in d["links"]), "LinkedIn entry-level search links")
-r = c.post("/api/track", json={"key": "role:" + d["roles"][0]["id"], "status": "applied", "meta": {"title": "T", "url": "https://x"}})
+r = c.post("/api/track", headers={"X-Career-Hub": "1"}, json={"key": "role:" + d["roles"][0]["id"], "status": "applied", "meta": {"title": "T", "url": "https://x"}})
 chk(r.status_code == 200 and json.load(open(os.path.join(D, "tracker/tracker.json")))["items"]["role:" + d["roles"][0]["id"]]["status"] == "applied", "track writes tracker")
-chk(c.post("/api/track", json={"key": "role:x", "status": "<script>"}).status_code == 400, "bad status rejected")
-chk(c.post("/api/earning", json={"date": "2026-10-27", "amount_inr": 4000}).status_code == 200 and c.post("/api/earning", json={"date": "x", "amount_inr": 1}).status_code == 400, "earning validated")
-r = c.post("/api/settings", json={"main_sectors": ["bioinformatics", "hacker"], "locations": ["Mars"], "roles": ["ML / AI Engineer"], "gig_types": ["tech"]})
+chk(c.post("/api/track", headers={"X-Career-Hub": "1"}, json={"key": "role:x", "status": "<script>"}).status_code == 400, "bad status rejected")
+chk(c.post("/api/earning", headers={"X-Career-Hub": "1"}, json={"date": "2026-10-27", "amount_inr": 4000}).status_code == 200 and c.post("/api/earning", headers={"X-Career-Hub": "1"}, json={"date": "x", "amount_inr": 1}).status_code == 400, "earning validated")
+r = c.post("/api/settings", headers={"X-Career-Hub": "1"}, json={"main_sectors": ["bioinformatics", "hacker"], "locations": ["Mars"], "roles": ["ML / AI Engineer"], "gig_types": ["tech"]})
 saved = json.load(open(os.path.join(D, "settings/settings.json")))
 chk(saved["main_sectors"] == ["bioinformatics"] and saved["locations"] == SET.C.DEFAULT_SETTINGS["locations"] and saved["experience"] == "Fresher / entry-level", "settings validated (unknown values dropped, experience locked)")
 print("\nFAILURES:", FAILS)

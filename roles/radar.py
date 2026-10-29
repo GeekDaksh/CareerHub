@@ -20,6 +20,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from email.header import decode_header, make_header
+from email.utils import parseaddr
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -208,6 +209,26 @@ def parse_alert(platform, html, text):
     return jobs
 
 
+def _dom_in(d, k):
+    return d == k or d.endswith("." + k)
+
+
+def alert_platform(msg):
+    """Which job site sent this alert email — or None. Trusted only if (1) the real sender ADDRESS is on that
+    site (the display name is ignored: anyone can write 'LinkedIn' there) and (2) Gmail's own check says the
+    email's signature (DKIM) passed for that site. Forged alerts don't pass both."""
+    _, addr = parseaddr(str(make_header(decode_header(msg.get("From", "")))))
+    dom = addr.rsplit("@", 1)[-1].lower() if "@" in addr else ""
+    plat = next((k for k in ALERT_SENDERS if _dom_in(dom, k)), None)
+    if not plat:
+        return None
+    auth = " ".join(str(h) for h in (msg.get_all("Authentication-Results") or [])).lower()
+    signed = [d.lstrip("@") for d in re.findall(r"dkim=pass[^;]*?header\.[id]=(@?[\w.-]+)", auth)]
+    if not any(_dom_in(d, plat) for d in signed):
+        return None
+    return ALERT_SENDERS[plat]
+
+
 def from_alerts(state, health):
     user, pw = os.environ.get("GMAIL_ADDRESS"), os.environ.get("GMAIL_APP_PASSWORD")
     if not (user and pw):
@@ -232,8 +253,7 @@ def from_alerts(state, health):
             mid = msg.get("Message-ID") or uid.decode()
             if mid in done:
                 continue
-            sender = str(make_header(decode_header(msg.get("From", "")))).lower()
-            platform = next((v for k, v in ALERT_SENDERS.items() if k in sender), None)
+            platform = alert_platform(msg)
             if not platform:
                 continue
             html, text = _html_of(msg)
