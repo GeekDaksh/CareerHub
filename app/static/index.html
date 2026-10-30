@@ -261,7 +261,9 @@ document.addEventListener("click", (e) => {
 window.addEventListener("hashchange", () => { readHash(); render(); });
 
 /* ---------- data views ---------- */
-const openRoles = () => D.roles.filter((r) => !["hidden", "applied", "interview", "offer", "rejected"].includes(st("role:" + r.id)));
+const openRoles = () => D.roles.filter((r) => !["hidden", "applied", "interview", "offer", "rejected"].includes(st("role:" + r.id))
+  && (S.f.allroles || (r.roles || []).length));   // your roles only, unless "Other roles too" is on
+const CTYPE = {startup: "Startups", big: "Big firms", unknown: "Not sure"};
 const openGigs = () => D.gigs.filter((g) => !["hidden", "bid", "won", "done", "paid", "lost"].includes(st("gig:" + g.id)));
 const roleMeta = (r) => ({title: r.title, company: r.company || "", url: r.url, platform: r.platform || "", location: r.location || ""});
 const gigMeta = (g) => ({title: g.title, company: g.company || "", url: g.url, platform: g.source, location: ""});
@@ -281,6 +283,8 @@ function roleCard(r, compact) {
       ${(r.roles || []).slice(0, 2).map((x) => `<span class="tag">${esc(x)}</span>`).join("")}
       ${(r.sectors || []).slice(0, 2).map((x) => `<span class="tag bB">${esc(x)}</span>`).join("")}
       ${r.location_ok === false ? '<span class="tag bD">outside your locations</span>' : ""}
+      ${r.company_type === "startup" ? '<span class="tag bA">Startup</span>' : r.company_type === "big" ? '<span class="tag who">Big firm</span>' : ""}
+      ${r.focus ? '<span class="tag bB">ML · GenAI · CV</span>' : ""}
       ${r.intl ? '<span class="tag bB">International</span>' : ""}${r.pay_text ? `<span class="tag bA">${esc(r.pay_text)}</span>` : ""}
       <span class="tag">${esc(ago(r.posted || r.first_seen))}</span></div>
     ${compact ? "" : (r.trust?.good || []).map((x) => `<p class="flag ok">${esc(x)}</p>`).join("") + (r.trust?.warn || []).map((x) => `<p class="flag warn">${esc(x)}</p>`).join("")}
@@ -430,12 +434,14 @@ function careerJobs() {
   const srcs = ["Company careers", "Job alerts", "Remote boards", "Web search"];
   const kindOf = {ats: "Company careers", alert: "Job alerts", board: "Remote boards", search: "Web search"};
   const trusts = ["Verified", "Likely", "Unverified"];
-  const fS = fsel("sec", sectors), fT = fsel("trust", trusts), fK = fsel("src", srcs);
+  const ctypes = Object.values(CTYPE);
+  const fS = fsel("sec", sectors), fT = fsel("trust", trusts), fK = fsel("src", srcs), fC = fsel("ctype", ctypes);
   const q = (S.f.q || "").toLowerCase();
   let list = openRoles().filter((r) =>
     (!r.sectors?.length || r.sectors.some((x) => fS.includes(x)) || fS.length === sectors.length) &&
     fT.map((x) => x.toLowerCase()).includes(r.trust?.verdict) && fK.includes(kindOf[r.source_kind]) &&
-    (S.f.anyloc || r.location_ok !== false) && (!S.f.intl || r.intl) &&
+    (S.f.anyloc || r.location_ok !== false) && (!S.f.intl || r.intl) && fC.includes(CTYPE[r.company_type || "unknown"]) &&
+    (!S.f.focus || r.focus) &&
     (!q || `${r.title} ${r.company} ${r.location}`.toLowerCase().includes(q)));
   if (S.f.sort === "new") list.sort((a, b) => (b.posted || b.first_seen) - (a.posted || a.first_seen));
   return `<div class="page-head"><h2>Jobs</h2><p>Fresher and entry-level only. ${D.senior_hidden} senior roles hidden, ${D.blocked.length} risky posts blocked (see Safety). Sources: your target companies' careers pages, your job-alert emails (LinkedIn, Naukri, Internshala…), remote boards and public job pages.</p></div>
@@ -443,7 +449,10 @@ function careerJobs() {
       <div class="frow"><input class="search" id="q" placeholder="Search title, company, city…" value="${esc(S.f.q || "")}">
         <select class="sel" data-change="sortset"><option value="best">Best match</option><option value="new" ${S.f.sort === "new" ? "selected" : ""}>Newest</option></select>
         <button class="mini ${S.f.anyloc ? "on" : ""}" data-act="anyloc">Any location</button>
-        <button class="mini ${S.f.intl ? "on" : ""}" data-act="intl" title="Remote jobs at international companies">International only</button></div>
+        <button class="mini ${S.f.intl ? "on" : ""}" data-act="intl" title="Remote jobs at international companies">International only</button>
+        <button class="mini ${S.f.focus ? "on" : ""}" data-act="focus" title="Machine learning, generative AI / LLM and computer vision roles">ML · GenAI · CV only</button>
+        <button class="mini ${S.f.allroles ? "on" : ""}" data-act="allroles" title="Also show jobs outside your chosen roles">Other roles too</button></div>
+      <div class="frow" data-all='${esc(JSON.stringify(ctypes))}'><span class="lab">Company</span>${chips(ctypes, fC, "ctype")}</div>
       <div class="frow" data-all='${esc(JSON.stringify(sectors))}'><span class="lab">Sector</span>${chips(sectors, fS, "sec")}</div>
       <div class="frow" data-all='${esc(JSON.stringify(srcs))}'><span class="lab">Source</span>${chips(srcs, fK, "src")}</div>
       <div class="frow" data-all='${esc(JSON.stringify(trusts))}'><span class="lab">Trust</span>${chips(trusts, fT, "trust")}<span class="faint small">Locations: ${esc(locs.join(", "))} — change in Settings</span></div>
@@ -455,6 +464,8 @@ ACT.sortset = (d, el) => { S.f.sort = el.value; store.set("f", S.f); render(); }
 ACT.anyloc = () => { S.f.anyloc = !S.f.anyloc; store.set("f", S.f); render(); };
 ACT.runnow = async (d) => { try { const r = await post("/api/refresh", {what: d.what}); toast(r.message, !r.ok); } catch (e) { toast("Couldn't start — try again", true); } };
 ACT.intl = () => { S.f.intl = !S.f.intl; store.set("f", S.f); render(); };
+ACT.focus = () => { S.f.focus = !S.f.focus; store.set("f", S.f); render(); };
+ACT.allroles = () => { S.f.allroles = !S.f.allroles; store.set("f", S.f); render(); };
 ACT.foreign = () => { S.f.foreign = !S.f.foreign; store.set("f", S.f); render(); };
 
 function boardOf(prefix, cols, emptyMsg) {
@@ -472,17 +483,24 @@ const careerApps = () => `<div class="page-head"><h2>Applications</h2><p>Every j
   ${boardOf("role:", [["saved", "Saved"], ["applied", "Applied"], ["interview", "Interview"], ["offer", "Offer"]], "Nothing here yet")}
   <p class="faint small">Closed: ${countStatus("role:", ["rejected"])}. Rejections are normal. Keep the weekly count up.</p>`;
 
+const isStartupTier = (t) => /^[12]/.test(String(t || ""));
 function careerCompanies() {
   const tiers = [...new Set(D.companies.map((c) => c.tier).filter(Boolean))];
   const fT = fsel("tier", tiers), q = (S.f.q || "").toLowerCase();
-  const list = D.companies.filter((c) => fT.includes(c.tier) && (!q || `${c.company} ${c.fields} ${c.city}`.toLowerCase().includes(q)));
+  const all = D.companies.filter((c) => fT.includes(c.tier) && (!q || `${c.company} ${c.fields} ${c.city}`.toLowerCase().includes(q)));
+  const view = S.f.cview || "startups";
+  const list = all.filter((c) => view === "startups" ? isStartupTier(c.tier) : !isStartupTier(c.tier));
+  const nS = all.filter((c) => isStartupTier(c.tier)).length;
   return `<div class="page-head"><h2>Companies</h2><p>Startups first, then corporates, in your sectors. Each has its key people and work emails, graded A–D. Open one for the talking point, a LinkedIn note and an email draft.</p></div>
     <div class="filters"><div class="frow"><input class="search" id="q" placeholder="Search company, sector, city…" value="${esc(S.f.q || "")}"><a class="ghost" href="/api/export.xlsx">Download Excel</a></div>
+      <div class="frow"><span class="lab">Show</span><button class="mini ${view === "startups" ? "on" : ""}" data-act="cview" data-v="startups">Startups (${nS})</button>
+        <button class="mini ${view === "big" ? "on" : ""}" data-act="cview" data-v="big">Big firms & labs (${all.length - nS})</button></div>
       <div class="frow" data-all='${esc(JSON.stringify(tiers))}'><span class="lab">Tier</span>${chips(tiers, fT, "tier")}</div></div>
     <div class="tbl"><table><thead><tr><th>#</th><th>Company</th><th>Tier</th><th>Sector</th><th>City</th><th>Fit</th><th>Best contact</th><th>Email</th><th>Status</th></tr></thead><tbody>
     ${list.map((c) => { const p = c.contacts[0] || {}; return `<tr class="click" data-act="company" data-key="${esc(c.key)}"><td>${esc(c.rank)}</td><td><b>${esc(c.company)}</b></td><td class="dim">${esc(c.tier)}</td><td>${esc(c.fields)}</td><td class="dim">${esc(c.city || "")}</td><td>${esc(c.fit || "")}</td><td>${esc(p.name || "—")}<br><span class="faint small">${esc(p.role || "")}</span></td><td>${p.email ? `<span class="score ${gradeCls(p.email_grade)}">${esc(String(p.email_grade).split(" ")[0])}</span> <span class="small">${esc(p.email)}</span>` : '<span class="faint">LinkedIn</span>'}</td><td>${esc(st("company:" + c.key, "to contact"))}</td></tr>`; }).join("") || '<tr><td colspan="9" class="empty">No companies yet. The job finder runs Monday and Thursday.</td></tr>'}
     </tbody></table></div>`;
 }
+ACT.cview = (d) => { S.f.cview = d.v; store.set("f", S.f); render(); };
 function companyDlg(key) {
   const c = D.companies.find((x) => x.key === key); if (!c) return;
   const opts = ["to contact", "contacted", "replied", "interview", "no reply"], cur = st("company:" + key, "to contact");

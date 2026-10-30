@@ -284,7 +284,8 @@ def from_boards():
         out.append({"title": g["title"], "company": g.get("company"), "location": g.get("location") or "Remote",
                     "url": g["url"], "platform": g["source"], "source_kind": "ats" if g.get("official") else "board",
                     "posted": g.get("posted"), "desc": g.get("desc") or "", "work_type": g.get("work_type"),
-                    "eligibility": g.get("eligibility"), "intl": True, "pay_text": g.get("pay_text") or ""})
+                    "eligibility": g.get("eligibility"), "intl": True, "pay_text": g.get("pay_text") or "",
+                    "company_size": g.get("company_size")})
     return out
 
 
@@ -300,16 +301,40 @@ Results:
 def search_queries(s):
     locs = SETTINGS.cities(s) + (["India remote"] if any(x.startswith("Remote") for x in s["locations"]) else [])
     qs = []
-    for role in s["roles"]:
-        for name, site in SEARCH_SITES:
-            for loc in locs or ["India"]:
-                qs.append((name, f'site:{site} "{C.ROLE_QUERY[role]}" {loc} fresher'))
+    # your core roles (ML / GenAI / CV) first, each with its extra phrases ("LLM Engineer", "Computer Vision Intern"...)
+    order = [r for r in s["roles"] if r in C.ROLE_FOCUS] + [r for r in s["roles"] if r not in C.ROLE_FOCUS]
+    for role in order:
+        for phrase in [C.ROLE_QUERY[role]] + C.ROLE_QUERY_EXTRA.get(role, []):
+            for name, site in SEARCH_SITES:
+                for loc in locs or ["India"]:
+                    qs.append((name, f'site:{site} "{phrase}" {loc} fresher'))
     return qs
+
+
+STARTUP_PLATFORMS = {"Wellfound", "YC Work at a Startup", "Cutshort"}   # startup-only job sites
+_BIG_RE = SETTINGS._phrase_re(C.BIG_FIRMS)
+
+
+def company_type(r):
+    """'startup', 'big' or 'unknown' — so the Jobs tab can keep startups and big firms apart."""
+    tier = str(r.get("tier") or "")
+    if tier[:1] in ("1", "2"):
+        return "startup"
+    if tier[:1] in ("3", "4"):
+        return "big"
+    if r.get("company_size") in ("big", "startup"):
+        return r["company_size"]
+    if _BIG_RE.search(str(r.get("company") or "").lower()):
+        return "big"
+    if r.get("platform") in STARTUP_PLATFORMS:
+        return "startup"
+    return "unknown"
 
 
 def from_search(s, state, health):
     qs = search_queries(s)
     if not qs:
+        health["Web search (job pages)"] = {"ok": True, "count": 0, "queries": 0, "at": NOW}
         return []
     start = state.get("search_cursor", 0) % len(qs)
     batch = (qs[start:] + qs[:start])[:C.ROLE_SEARCHES_PER_RUN]
@@ -357,6 +382,10 @@ def score(r, s):
     sc, why = 0, []
     if r["roles"]:
         sc += 30; why.append("matches " + ", ".join(r["roles"][:2]))
+        if r.get("focus"):
+            sc += 10; why.append("core: ML / GenAI / CV")
+    else:
+        sc -= 25          # not one of your roles: kept, but hidden unless you ask for other roles
     main = set(s["main_sectors"])
     if set(r["sectors"]) & main:
         sc += 20; why.append("main sector")
@@ -373,7 +402,7 @@ def score(r, s):
         sc += 5; why.append("India startup")
     if r.get("keywords"):
         sc += min(10, 2 * len(r["keywords"]))
-    return min(100, sc), why
+    return max(0, min(100, sc)), why
 
 
 def run():
@@ -398,7 +427,7 @@ def run():
         raw += from_search(s, state, health)
     except Exception as e:
         health["Web search (job pages)"] = {"ok": False, "count": 0, "at": NOW, "error": str(e)[:200]}
-    print(f"  Web search (job pages): {health['Web search (job pages)'].get('count')} in {time.time() - t:.0f}s")
+    print(f"  Web search (job pages): {health.get('Web search (job pages)', {}).get('count')} in {time.time() - t:.0f}s")
 
     roles, blocked, senior, seen = {}, [], 0, set()
     for r in raw:
@@ -425,8 +454,10 @@ def run():
             blocked.append({"title": r["title"], "company": r.get("company"), "url": r["url"],
                             "platform": r.get("platform"), "why": r["trust"]["warn"]})
             continue
-        r["roles"] = SETTINGS.roles_matched(r["title"], s) or [x for x in C.ROLE_CATALOG
-                                                               if any(w in r["title"].lower() for w in C.ROLE_CATALOG[x])]
+        r["roles"] = SETTINGS.roles_matched(r["title"], s)          # your chosen roles only
+        r["other_roles"] = [x for x in SETTINGS.roles_of(r["title"]) if x not in r["roles"]]
+        r["focus"] = any(x in C.ROLE_FOCUS for x in r["roles"])      # ML / GenAI / computer vision
+        r["company_type"] = company_type(r)
         r["sectors"] = sectors_of(f"{r['title']} {r.get('company')} {r.get('desc', '')[:800]}", r.get("known_sectors"))
         r["location_ok"] = SETTINGS.location_ok(r.get("location"), s) and r.get("eligibility") != "blocked"
         r["keywords"] = AP.keyword_tips(f"{r['title']} {r.get('desc', '')}")

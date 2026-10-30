@@ -45,9 +45,28 @@ def role_words(s):
     return sorted({w for r in s["roles"] for w in C.ROLE_CATALOG[r]})
 
 
-def roles_matched(title, s):
+def _phrase_re(words):
+    """Whole words / phrases at a word start: 'rag' must not match 'storage', 'ai engineer' not 'mail engineer'.
+    Words of 4+ letters may continue ('bioinformatic' -> 'bioinformatics'); short ones must end there."""
+    parts = [re.escape(w.lower()) + (r"\b" if len(w) <= 4 else "") for w in words]
+    return re.compile(r"(?<![a-z0-9])(?:" + "|".join(parts) + ")")
+
+
+ROLE_RE = {r: _phrase_re(ws) for r, ws in C.ROLE_CATALOG.items()}
+EXCLUDE_RE = _phrase_re(getattr(C, "ROLE_EXCLUDE", []) or ["\x00"])
+
+
+def roles_of(title):
+    """Every catalog role a title belongs to (empty for sales/marketing/recruiting titles)."""
     t = str(title or "").lower()
-    return [r for r in s["roles"] if any(w in t for w in C.ROLE_CATALOG[r])]
+    if EXCLUDE_RE.search(t):
+        return []
+    return [r for r, rx in ROLE_RE.items() if rx.search(t)]
+
+
+def roles_matched(title, s):
+    """Your chosen roles that a job title matches."""
+    return [r for r in roles_of(title) if r in s["roles"]]
 
 
 def location_ok(text, s):

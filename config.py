@@ -72,22 +72,25 @@ CITY_ALIASES = {"Bengaluru": ["bengaluru", "bangalore"], "Delhi NCR": ["delhi", 
                 "Mumbai": ["mumbai", "navi mumbai", "thane"], "Kochi": ["kochi", "cochin"]}
 
 # Roles you can target: words that must appear in a job title
-ROLE_CATALOG = {
-    "ML / AI Engineer":           ["machine learning", "ml engineer", "ai engineer", "ml ops", "mlops", "ai/ml", "applied scientist"],
-    "LLM / GenAI Engineer":       ["llm", "genai", "generative ai", "nlp", "prompt", "ai agent"],
+ROLE_CATALOG = {   # words matched as whole words/phrases in job titles (word starts, so "bioinformatic" covers "-s")
+    "ML / AI Engineer":           ["machine learning", "ml engineer", "ml developer", "ml intern", "ai engineer", "ai developer",
+                                   "ai intern", "ai/ml", "ml/ai", "ai-ml", "aiml", "deep learning", "applied scientist",
+                                   "applied ml", "applied ai", "ml scientist", "mlops", "ml ops", "ai trainee", "ml trainee"],
+    "LLM / GenAI Engineer":       ["llm", "genai", "gen ai", "generative ai", "nlp", "natural language", "prompt engineer",
+                                   "ai agent", "agentic", "rag", "conversational ai", "chatbot", "large language", "foundation model"],
     "Data Scientist":             ["data scientist", "data science"],
-    "Research Engineer":          ["research engineer", "research scientist", "research associate", "research intern"],
-    "Computer Vision Engineer":   ["computer vision", "vision engineer", "perception", "image"],
+    "Research Engineer":          ["research engineer", "research scientist", "research associate", "research intern",
+                                   "research fellow", "ai research", "ml research"],
+    "Computer Vision Engineer":   ["computer vision", "cv engineer", "vision engineer", "vision ai", "visual ai", "perception",
+                                   "image processing", "video analytics", "3d vision", "multimodal"],
     "Bioinformatics":             ["bioinformatic", "computational biolog", "genomic", "cheminformatic"],
-    "Robotics / Autonomy":        ["robotics", "autonomy", "autonomous", "slam", "controls"],
+    "Robotics / Autonomy":        ["robotics", "autonomy", "autonomous", "slam"],
     "Embedded / Firmware":        ["embedded", "firmware", "iot", "fpga"],
     "Software Engineer (Python)": ["python", "backend", "software engineer", "sde", "developer"],
     "Data Analyst":               ["data analyst", "analytics", "business analyst"],
     "Optimisation / Simulation":  ["optimization", "optimisation", "simulation", "operations research"],
 }
-
-# What to type into job searches for each role (used by the role radar and the one-click search links)
-ROLE_QUERY = {
+ROLE_QUERY = {   # main search phrase per role (job-site links + web search)
     "ML / AI Engineer": "Machine Learning Engineer", "LLM / GenAI Engineer": "Generative AI Engineer",
     "Data Scientist": "Data Scientist", "Research Engineer": "AI Research Engineer",
     "Computer Vision Engineer": "Computer Vision Engineer", "Bioinformatics": "Bioinformatics",
@@ -95,6 +98,30 @@ ROLE_QUERY = {
     "Software Engineer (Python)": "Python Developer", "Data Analyst": "Data Analyst",
     "Optimisation / Simulation": "Optimization Engineer",
 }
+ROLE_QUERY_EXTRA = {   # more search phrases, used in turn by the web search (it continues where it stopped each run)
+    "ML / AI Engineer": ["AI Engineer", "Machine Learning Intern", "Deep Learning Engineer", "AI ML Intern"],
+    "LLM / GenAI Engineer": ["LLM Engineer", "NLP Engineer", "GenAI Intern", "AI Agent Developer"],
+    "Computer Vision Engineer": ["Computer Vision Intern", "Perception Engineer"],
+    "Data Scientist": ["Data Science Intern"],
+    "Research Engineer": ["AI Research Intern"],
+}
+ROLE_FOCUS = ["ML / AI Engineer", "LLM / GenAI Engineer", "Computer Vision Engineer"]   # your core: ranked highest
+# titles that use AI words but are not engineering/research work
+ROLE_EXCLUDE = ["sales", "account executive", "account manager", "business development", "marketing", "recruiter",
+                "talent acquisition", "customer success", "pre-sales", "presales", "partnerships", "trainer", "annotator",
+                "content writer", "copywriter"]
+
+# Companies whose jobs count as "big firm" on the Jobs tab (startups are found by the job finder's own ranking,
+# startup job sites and the remote-company list below). Matched as whole words in the company name.
+BIG_FIRMS = ["google", "alphabet", "deepmind", "microsoft", "amazon", "aws", "meta", "apple", "ibm", "oracle", "adobe",
+             "salesforce", "intel", "nvidia", "qualcomm", "samsung", "cisco", "sap", "accenture", "deloitte", "pwc",
+             "kpmg", "ernst & young", "capgemini", "cognizant", "tcs", "tata consultancy", "tata", "infosys", "wipro",
+             "hcl", "hcltech", "tech mahindra", "larsen", "l&t", "reliance", "jio", "flipkart", "walmart", "jpmorgan",
+             "goldman sachs", "morgan stanley", "american express", "uber", "siemens", "bosch", "honeywell", "ge",
+             "philips", "shell", "unilever", "mastercard", "visa", "paypal", "linkedin", "netflix", "spotify", "atlassian",
+             "servicenow", "workday", "vmware", "dell", "hp", "hewlett", "texas instruments", "amd", "arm", "mercedes",
+             "continental", "zf", "airbus", "boeing", "isro", "drdo", "barc", "hal", "bel", "mahindra", "bajaj",
+             "hdfc", "icici", "axis bank", "kotak", "ola", "paytm", "zomato", "swiggy", "byju"]
 
 DEFAULT_SETTINGS = {
     "main_sectors": ["bioinformatics", "supply chain", "SDL"],             # searched in depth, ranked first
@@ -165,14 +192,14 @@ FX_TO_INR = {"INR": 1, "USD": 88, "EUR": 95, "GBP": 112, "AUD": 57, "CAD": 63, "
 # herworkcircle.com). Pay and eligibility change often — check each site before applying.
 # Remote-first / global companies whose OWN job boards are read directly (official = verified source).
 # Only jobs open to India (India, APAC, Asia, worldwide) are kept. Board names were checked live on 2026-10-30.
-REMOTE_COMPANIES = [
-    {"name": "GitLab", "ats": "greenhouse", "slug": "gitlab"},
-    {"name": "Canonical", "ats": "greenhouse", "slug": "canonical"},
-    {"name": "Elastic", "ats": "greenhouse", "slug": "elastic"},
-    {"name": "MongoDB", "ats": "greenhouse", "slug": "mongodb"},
-    {"name": "Datadog", "ats": "greenhouse", "slug": "datadog"},
-    {"name": "Supabase", "ats": "ashby", "slug": "supabase"},
-    {"name": "Zapier", "ats": "ashby", "slug": "zapier"},
+REMOTE_COMPANIES = [   # size: "big" (listed / large) or "startup" (private, growth stage)
+    {"name": "GitLab", "ats": "greenhouse", "slug": "gitlab", "size": "big"},
+    {"name": "Canonical", "ats": "greenhouse", "slug": "canonical", "size": "big"},
+    {"name": "Elastic", "ats": "greenhouse", "slug": "elastic", "size": "big"},
+    {"name": "MongoDB", "ats": "greenhouse", "slug": "mongodb", "size": "big"},
+    {"name": "Datadog", "ats": "greenhouse", "slug": "datadog", "size": "big"},
+    {"name": "Supabase", "ats": "ashby", "slug": "supabase", "size": "startup"},
+    {"name": "Zapier", "ats": "ashby", "slug": "zapier", "size": "startup"},
 ]
 
 AI_PLATFORMS = [

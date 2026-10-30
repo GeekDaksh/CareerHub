@@ -287,6 +287,7 @@ def remote_companies(companies):
                 "budget_min": None, "budget_max": None, "currency": None, "location": loc,
                 "restrictions": [], "work_type": work_type_of(title, kind) if work_type_of(title, kind) != "unknown" else "full-time",
                 "tags": ["remote" if remote else "India office", c["name"]], "bids": None, "official": True,
+                "company_size": c.get("size"),
             })
     if errors and not out:
         raise RuntimeError("; ".join(errors[:3]))

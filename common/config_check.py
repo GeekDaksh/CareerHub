@@ -45,10 +45,15 @@ def validate(cfg=C):
             raise ConfigError(f"config.DEFAULT_SETTINGS.{k} has unknown sectors {bad}")
     if set(cfg.ROLE_QUERY) != set(cfg.ROLE_CATALOG):
         raise ConfigError("config.ROLE_QUERY and ROLE_CATALOG must list the same roles")
+    for name in ("ROLE_QUERY_EXTRA", "ROLE_FOCUS"):
+        bad = [r for r in getattr(cfg, name, []) if r not in cfg.ROLE_CATALOG]
+        if bad:
+            raise ConfigError(f"config.{name} has roles not in ROLE_CATALOG: {bad}")
     if not 0 <= cfg.SHIELD["weak_signal_combo"] <= 6:
         raise ConfigError("config.SHIELD.weak_signal_combo must be 0 (off) to 6")
     for c in cfg.REMOTE_COMPANIES:
-        if not (isinstance(c, dict) and set(c) == {"name", "ats", "slug"} and c["ats"] in ATS_KINDS
+        if not (isinstance(c, dict) and set(c) in ({"name", "ats", "slug"}, {"name", "ats", "slug", "size"})
+                and c.get("size", "big") in ("big", "startup") and c["ats"] in ATS_KINDS
                 and re.fullmatch(r"[A-Za-z0-9_.-]{1,60}", str(c["slug"]))):
             raise ConfigError(f"config.REMOTE_COMPANIES entry {c!r} must be {{name, ats (greenhouse/lever/ashby), slug}}")
     return True

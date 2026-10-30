@@ -85,7 +85,9 @@ json.dump({"roles": ["Data Scientist"], "locations": ["Pune"]}, open(os.path.joi
 from common import settings as SET
 s = SET.load(D)
 qs = RR.search_queries(s)
-chk(all('"Data Scientist"' in q and "Pune" in q for _, q in qs) and len(qs) == 6, f"search follows Settings ({len(qs)} queries)")
+n_phr = 1 + len(RR.C.ROLE_QUERY_EXTRA.get("Data Scientist", []))
+chk(all(('"Data Scientist"' in q or '"Data Science Intern"' in q) and "Pune" in q for _, q in qs) and len(qs) == 6 * n_phr,
+    f"search follows Settings ({len(qs)} queries: 6 sites x {n_phr} phrases)")
 chk(SET.location_ok("Bengaluru, India", s) is False and SET.location_ok("Pune", s), "location filter follows Settings")
 
 # ---------------- server
