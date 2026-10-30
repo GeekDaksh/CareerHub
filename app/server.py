@@ -1,6 +1,8 @@
 """Career Hub web server (runs in the private Hugging Face Space).
 Serves the single-page app and a small JSON API over the private dataset."""
 import csv
+import hashlib
+import hmac
 import io
 import json
 import math
@@ -11,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
 import config as C
 from common import apply as AP
@@ -21,6 +23,17 @@ from common import trust
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
 DATA_REPO = os.environ.get("DATA_REPO")
+if HF_TOKEN and not DATA_REPO:          # same default as common/hfstore.py: <your-hf-username>/career-hub-data
+    try:
+        from huggingface_hub import HfApi
+        DATA_REPO = f"{HfApi(token=HF_TOKEN).whoami()['name']}/career-hub-data"
+    except Exception as e:
+        print("server: could not find the data store name:", e)
+APP_PASSWORD = os.environ.get("APP_PASSWORD") or ""
+SESSION_SECRET = (os.environ.get("SESSION_SECRET") or "").encode()
+ON_PUBLIC_HOST = bool(os.environ.get("RENDER"))      # Render sets RENDER=true; its links are public
+SESSION_DAYS = 30
+MAX_FAILS_PER_IP, MAX_FAILS_TOTAL, FAIL_WINDOW = 5, 30, 15 * 60
 LOCAL = os.environ.get("DATA_DIR", "data")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,11 +47,114 @@ MAX_TRACKED = 5000             # tracker items
 FRESH_EVERY = 60               # a forced reload rebuilds the data at most once a minute
 
 
+# ------------------------------------------------------------------ login (the app holds contacts + your tracker)
+OPEN_PATHS = {"/login", "/healthz"}
+_fails = []                     # (time, ip) of wrong passwords
+
+
+def _auth_ready():
+    return len(APP_PASSWORD) >= 10 and len(SESSION_SECRET) >= 16
+
+
+def _sign(exp):
+    return hmac.new(SESSION_SECRET, f"career-hub:{exp}".encode(), hashlib.sha256).hexdigest()
+
+
+def _session_ok(cookie):
+    try:
+        exp, sig = str(cookie or "").split(".", 1)
+        return int(exp) > time.time() and hmac.compare_digest(sig, _sign(int(exp)))
+    except (ValueError, TypeError):
+        return False
+
+
+def _client_ip(request):
+    return (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0].strip()
+
+
+def login_required(request):
+    """Return a response that blocks the request, or None to let it through."""
+    if request.url.path in OPEN_PATHS:
+        return None
+    if not APP_PASSWORD and not ON_PUBLIC_HOST:
+        return None             # local run / tests: no password set and not on a public host
+    if not _auth_ready():       # fail closed: never serve the data on a public link without a strong password
+        return JSONResponse({"detail": "Set APP_PASSWORD (10+ characters) and SESSION_SECRET in the host's settings"},
+                            status_code=503)
+    if _session_ok(request.cookies.get("ch_session")):
+        return None
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "login required"}, status_code=401)
+    return RedirectResponse("/login", status_code=303)
+
+
+LOGIN_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Career Hub · sign in</title><style>
+:root{--bg:#1e1e1e;--fg:#f3efe6;--dim:#a8a296;--line:#3a3833;--acc:#f6c89f;--bad:#f49f92}
+@media (prefers-color-scheme: light){:root{--bg:#f6f3ec;--fg:#1e1e1e;--dim:#6b665c;--line:#d9d3c7;--acc:#b5651d;--bad:#b3261e}}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+form{width:min(340px,calc(100vw - 32px));border:1px solid var(--line);border-radius:18px;padding:28px}
+h1{font-size:24px;margin:0 0 4px}p{color:var(--dim);margin:0 0 18px;font-size:14px}
+input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--fg);font-size:16px}
+button{margin-top:14px;width:100%;padding:12px;border:0;border-radius:999px;background:var(--acc);color:#1e1e1e;font-weight:600;font-size:15px}
+.err{color:var(--bad);font-size:14px;margin-top:10px}</style></head><body>
+<form method="post" action="/login"><h1>Career Hub</h1><p>Private. Enter your password.</p>
+<input type="password" name="password" autocomplete="current-password" autofocus required aria-label="Password">
+<button type="submit">Open</button>{err}</form></body></html>"""
+
+
+@app.get("/login")
+def login_page():
+    return HTMLResponse(LOGIN_PAGE.replace("{err}", ""), headers={"Cache-Control": "no-store"})
+
+
+@app.post("/login")
+async def login(request: Request):
+    if not _auth_ready():
+        return JSONResponse({"detail": "login is not set up"}, status_code=503)
+    now, ip = time.time(), _client_ip(request)
+    with LOCK:
+        _fails[:] = [f for f in _fails if now - f[0] < FAIL_WINDOW]
+        if len(_fails) >= MAX_FAILS_TOTAL or sum(1 for f in _fails if f[1] == ip) >= MAX_FAILS_PER_IP:
+            return HTMLResponse(LOGIN_PAGE.replace("{err}", '<p class="err">Too many tries. Wait 15 minutes.</p>'),
+                                status_code=429)
+    from urllib.parse import parse_qs
+    pw = (parse_qs((await request.body()).decode("utf-8", "replace")).get("password") or [""])[0]
+    if not hmac.compare_digest(hashlib.sha256(pw.encode()).digest(), hashlib.sha256(APP_PASSWORD.encode()).digest()):
+        with LOCK:
+            _fails.append((now, ip))
+        return HTMLResponse(LOGIN_PAGE.replace("{err}", '<p class="err">Wrong password.</p>'), status_code=401)
+    exp = int(now + SESSION_DAYS * 86400)
+    r = RedirectResponse("/", status_code=303)
+    r.set_cookie("ch_session", f"{exp}.{_sign(exp)}", max_age=SESSION_DAYS * 86400, httponly=True,
+                 secure=ON_PUBLIC_HOST, samesite="strict", path="/")
+    return r
+
+
+@app.get("/logout")
+def logout():
+    r = RedirectResponse("/login", status_code=303)
+    r.delete_cookie("ch_session", path="/")
+    return r
+
+
 @app.middleware("http")
 async def guard(request: Request, call_next):
     """Defence for every POST: (1) only JSON, (2) only from this app's own page (custom header + same origin),
     so another website open in the same browser can't send requests with Daksh's login; (3) size limit."""
-    if request.method == "POST":
+    blocked = login_required(request)
+    if blocked is not None:
+        return blocked
+    if request.method == "POST" and request.url.path == "/login":
+        origin = request.headers.get("origin")
+        if origin and urlparse(origin).netloc != request.headers.get("host", ""):
+            return JSONResponse({"detail": "cross-site request"}, status_code=403)
+        try:
+            if int(request.headers.get("content-length") or 0) > 4096:
+                return JSONResponse({"detail": "request too large"}, status_code=413)
+        except ValueError:
+            return JSONResponse({"detail": "bad length"}, status_code=400)
+    elif request.method == "POST":
         if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
             return JSONResponse({"detail": "JSON only"}, status_code=415)
         if request.headers.get("x-career-hub") != "1":

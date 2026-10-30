@@ -218,6 +218,7 @@ const store = {get(k, d) { try { const v = localStorage.getItem(k); return v ? J
 function toast(msg, bad) { const t = $("#toast"); t.textContent = msg; t.className = "toast show" + (bad ? " bad" : ""); clearTimeout(t._t); t._t = setTimeout(() => t.className = "toast", 2600); }
 async function post(path, body) {
   const r = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json", "X-Career-Hub": "1"}, body: JSON.stringify(body)});
+  if (r.status === 401) { location.href = "/login"; throw new Error("login"); }
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -663,7 +664,7 @@ function pageStatus() {
       <div class="kpi"><span class="k">Companies profiled</span><b>${esc(j.profiled ?? 0)}</b></div>
       <div class="kpi"><span class="k">Contacts</span><b>${esc(j.contacts ?? 0)}</b></div>
       <div class="kpi"><span class="k">Reliable emails (A/B)</span><b class="tA">${esc(j.key_contacts_with_reliable_email ?? 0)}</b></div></div>
-    <div class="row"><button class="ghost" data-act="refresh">Reload data</button>${D.github ? `<a class="ghost" href="https://github.com/${esc(D.github)}/actions" target="_blank" rel="noopener">Run logs ↗</a>` : ""}</div>`;
+    <div class="row"><button class="ghost" data-act="refresh">Reload data</button><a class="ghost" href="/logout">Sign out</a>${D.github ? `<a class="ghost" href="https://github.com/${esc(D.github)}/actions" target="_blank" rel="noopener">Run logs ↗</a>` : ""}</div>`;
 }
 
 /* ---------- render ---------- */
@@ -682,6 +683,7 @@ function render() {
 }
 async function load(fresh) {
   const r = await fetch("/api/data" + (fresh ? "?fresh=1" : ""));
+  if (r.status === 401) { location.href = "/login"; return; }
   D = await r.json();
   D.tracker.items = D.tracker.items || {};
   $("#who").textContent = "for " + D.profile.first_name;

@@ -12,7 +12,7 @@ One private web app with two separate sides, **Career** and **Freelance**. It ru
 **Safety:** every post gets a verdict (verified source / likely real / unverified). Risky posts are blocked, and the Safety tab shows the reason.
 **LinkedIn:** never scraped (that breaks LinkedIn's terms and gets accounts banned). Career Hub reads your own LinkedIn job-alert emails, finds public LinkedIn job pages via web search, and gives one-click entry-level LinkedIn searches.
 
-Free tiers only: GitHub Actions (private repo, about 1,000–1,300 of 2,000 min/month), a private Hugging Face Space + private dataset, Gemini's free API, and optional free keys. Your data (contacts, tracker, settings) lives only in the **private** HF dataset.
+Free tiers only: GitHub Actions (private repo, about 1,000–1,300 of 2,000 min/month), Render's free web plan for the app (password-protected), a private Hugging Face dataset for data, Gemini's free API, and optional free keys. Your data (contacts, tracker, settings) lives only in the **private** HF dataset.
 
 ---
 
@@ -35,14 +35,18 @@ Free tiers only: GitHub Actions (private repo, about 1,000–1,300 of 2,000 min/
 | `TOMBA_KEY` + `TOMBA_SECRET`, `HUNTER_API_KEY`, `ZEROBOUNCE_API_KEY` | recommended | email finders / verifiers (free plans) |
 | `SERPER_API_KEY`, `TAVILY_API_KEY`, `JINA_API_KEY` | optional | better search / backup search / JS sites |
 
-**5 · Start it:** in the **Actions** tab, click **Run workflow** on **Deploy app**, then **Gig + job radar**, then **Job finder**.
+**5 · Start the collectors:** in the **Actions** tab, click **Run workflow** on **Deploy app** (makes the private data store), then **Gig + job radar**, then **Job finder**.
 
-**6 · Open:** `https://huggingface.co/spaces/<your-hf-username>/career-hub` (log in to Hugging Face — it's private). Bookmark it on your phone.
+**6 · The app on Render (free):** sign in at render.com with GitHub → **New → Blueprint** → pick this repo. Render reads `render.yaml` and asks for two values: `HF_TOKEN` (same as step 1) and `APP_PASSWORD` (your own login password, 10+ characters). Press **Apply**. Render gives you a link like `https://career-hub-xxxx.onrender.com`.
+
+**7 · Link the morning email to it:** GitHub → Settings → Secrets and variables → Actions → **Variables** → New variable `APP_URL` = your Render link. Bookmark the link on your phone.
 
 From then on it runs, refreshes and redeploys by itself.
 
 ## Good to know
-- **Sleep:** after 2 days with no visits, the app sleeps. Opening the link wakes it in about a minute.
+- **Sleep:** on Render's free plan the app sleeps after 15 minutes unused. Opening the link wakes it in about a minute. The collectors don't depend on it.
+- **Why Render, not Hugging Face Spaces:** since July 2026, Hugging Face charges for Docker/Gradio Spaces on its free plan. The data store stays on Hugging Face (free, private).
+- **Login:** the Render link is public, so the app asks for `APP_PASSWORD`. It refuses to show anything if no strong password is set, and slows down guessing (5 tries per 15 minutes).
 - **Change sectors, roles, cities or gig types** in the app's ⚙ Settings. **Change your skills or projects** in `config.py`; saving it redeploys automatically.
 - **A broken source** shows as down in the Status tab. The others keep working, and its last results are kept.
 - **Teach the scam shield:** press **Report scam** on a post (it's hidden at once), **Not a scam** on a blocked post (it comes back with a warning), or **It's senior / It's entry** on a job. The Safety tab shows what it learned. Every change is versioned. To undo, run `DATA_DIR=data python -m common.feedback rollback <version>` after `python -m common.hfstore pull`.

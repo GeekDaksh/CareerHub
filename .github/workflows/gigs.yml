@@ -22,6 +22,7 @@ jobs:
       GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
       GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
       DIGEST_TO: ${{ secrets.DIGEST_TO }}
+      APP_URL: ${{ vars.APP_URL }}
       SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
       TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
     steps:
@@ -31,7 +32,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Make sure the web app exists
+      - name: Make sure the private data store exists
         run: python deploy/deploy_space.py --ensure
       - run: python -m common.hfstore pull
       - name: Learn from your feedback (versioned, tested lessons)

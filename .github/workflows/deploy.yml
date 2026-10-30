@@ -1,9 +1,10 @@
 name: Deploy app
-# Runs when the app or settings change, or by hand. Creates the private HF Space + dataset if missing.
+# The web app itself is deployed by Render on every push (render.yaml). This workflow makes sure the PRIVATE
+# Hugging Face dataset that holds all data exists and is private.
 on:
   push:
     branches: [main]
-    paths: ["app/**", "config.py", "common/**", "deploy/**", ".github/workflows/deploy.yml"]
+    paths: ["deploy/**", ".github/workflows/deploy.yml"]
   workflow_dispatch:
 concurrency:
   group: deploy

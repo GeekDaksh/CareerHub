@@ -1,16 +1,15 @@
-"""Create (if needed) the private HF dataset + private HF Space, and push the web app.
-Run by GitHub Actions. Needs HF_TOKEN (write).
-  python deploy/deploy_space.py            # create if missing + upload app
-  python deploy/deploy_space.py --ensure   # only create/upload if the Space doesn't exist yet
+"""Make sure the PRIVATE Hugging Face dataset (where all Career Hub data lives) exists and is private.
+
+The web app itself runs on Render's free plan (render.yaml); Render redeploys it on every push.
+Hugging Face started charging for Docker app servers (Spaces) on the free plan in July 2026, so the
+app no longer runs there. Run by GitHub Actions. Needs HF_TOKEN (write).
+  python deploy/deploy_space.py            # create if missing + verify private
+  python deploy/deploy_space.py --ensure   # same; kept so older workflow lines keep working
 """
 import os
-import shutil
 import sys
-import tempfile
 
 from huggingface_hub import HfApi
-
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main(ensure_only=False):
@@ -21,41 +20,20 @@ def main(ensure_only=False):
     api = HfApi(token=token)
     user = api.whoami()["name"]
     data_repo = os.environ.get("DATA_REPO") or f"{user}/career-hub-data"
-    space = os.environ.get("SPACE_REPO") or f"{user}/career-hub"
-
-    if ensure_only and api.repo_exists(space, repo_type="space"):
-        print("deploy: Space exists, nothing to do")
-        return
     api.create_repo(data_repo, repo_type="dataset", private=True, exist_ok=True)
-    api.create_repo(space, repo_type="space", space_sdk="docker", private=True, exist_ok=True)
-    # The data holds founders' contacts and your tracker. Never upload the app or the token unless BOTH the
-    # Space and the dataset are confirmed private (a hand-made public Space would show everything).
-    for rid, kind in ((space, "space"), (data_repo, "dataset")):
-        try:
-            api.update_repo_settings(rid, private=True, repo_type=kind)
-        except Exception as e:
-            print(f"deploy: could not set {kind} {rid} private ({e}) — checking its state")
-        if not getattr(api.repo_info(rid, repo_type=kind), "private", False):
-            print(f"deploy: STOPPED — {kind} {rid} is PUBLIC. Make it private on huggingface.co, then re-run.")
-            sys.exit(1)
-    api.add_space_secret(space, "HF_TOKEN", token)
-    api.add_space_variable(space, "DATA_REPO", data_repo)
-    api.add_space_variable(space, "GITHUB_REPO", os.environ.get("GITHUB_REPOSITORY", ""))
-
-    with tempfile.TemporaryDirectory() as tmp:
-        shutil.copytree(os.path.join(ROOT, "app"), tmp, dirs_exist_ok=True)   # server.py + static/ page
-        shutil.copy(os.path.join(ROOT, "config.py"), tmp)
-        os.makedirs(os.path.join(tmp, "common"), exist_ok=True)
-        for f in ("__init__.py", "settings.py", "apply.py", "trust.py", "feedback.py"):   # shared logic the server needs
-            shutil.copy(os.path.join(ROOT, "common", f), os.path.join(tmp, "common", f))
-        api.upload_folder(folder_path=tmp, repo_id=space, repo_type="space", commit_message="deploy from GitHub")
-
-    url = f"https://huggingface.co/spaces/{space}"
-    print("deploy: live at", url)
+    # The data holds founders' contacts, your tracker and earnings. Stop everything if it is public.
+    try:
+        api.update_repo_settings(data_repo, private=True, repo_type="dataset")
+    except Exception as e:
+        print(f"deploy: could not set {data_repo} private ({e}) — checking its state")
+    if not getattr(api.repo_info(data_repo, repo_type="dataset"), "private", False):
+        print(f"deploy: STOPPED — dataset {data_repo} is PUBLIC. Make it private on huggingface.co, then re-run.")
+        sys.exit(1)
+    print(f"deploy: private data store ready: {data_repo}")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a") as f:
-            f.write(f"### ✅ Career Hub deployed\nOpen: {url}\n\n(Log in to Hugging Face to see it — it's private.)\n")
+            f.write(f"### ✅ Private data store ready\n`{data_repo}` (private). The web app runs on Render.\n")
 
 
 if __name__ == "__main__":

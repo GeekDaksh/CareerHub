@@ -1,0 +1,24 @@
+# Render blueprint: the Career Hub web app on Render's free plan.
+# Render redeploys by itself on every push to main. Data lives in your PRIVATE Hugging Face dataset.
+services:
+  - type: web
+    name: career-hub
+    runtime: python
+    plan: free
+    region: singapore            # closest Render region to India
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r app/requirements.txt
+    startCommand: cd app && PYTHONPATH=.. uvicorn server:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
+      - key: HF_TOKEN            # same Hugging Face token as the GitHub secret (you paste it)
+        sync: false
+      - key: APP_PASSWORD        # your login password, 10+ characters (you type it)
+        sync: false
+      - key: SESSION_SECRET      # random, made by Render
+        generateValue: true
+      - key: GITHUB_REPO
+        value: GeekDaksh/careerhub

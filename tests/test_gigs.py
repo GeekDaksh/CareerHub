@@ -119,7 +119,7 @@ class FakeSMTP:
     def login(self, u, p): sent["login"] = u
     def sendmail(self, f, to, msg): sent["to"] = to; sent["msg"] = msg
 digest.smtplib.SMTP_SSL = FakeSMTP
-os.environ.update(GMAIL_ADDRESS="me@gmail.com", GMAIL_APP_PASSWORD="x", SPACE_URL="https://huggingface.co/spaces/u/career-hub")
+os.environ.update(GMAIL_ADDRESS="me@gmail.com", GMAIL_APP_PASSWORD="x", APP_URL="https://career-hub.onrender.com")
 os.makedirs(os.path.join(WORK, "data/tracker"), exist_ok=True)
 json.dump({"items": {f"gig:{top['id']}": {"status": "applied"}}, "earnings": [{"date": digest.datetime.now(digest.IST).strftime("%Y-%m-%d"), "amount_inr": 3000}]},
           open(os.path.join(WORK, "data/tracker/tracker.json"), "w"))
@@ -128,7 +128,7 @@ import email, quopri
 raw = sent.get("msg", "")
 m = email.message_from_string(raw)
 body = next((p.get_payload(decode=True).decode() for p in m.walk() if p.get_content_type() == "text/html"), "")
-chk(sent.get("to") == ["me@gmail.com"] and "Open Career Hub" in body, "digest sent with app link")
+chk(sent.get("to") == ["me@gmail.com"] and "Open Career Hub" in body and "career-hub.onrender.com" in body, "digest sent with the Render app link")
 chk(top["title"] not in body, "applied gig not repeated in digest")
 chk("₹3,000" in body, "earnings shown in digest")
 st = json.load(open(os.path.join(WORK, "data/gigs/state.json")))

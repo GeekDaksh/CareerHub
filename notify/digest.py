@@ -121,14 +121,7 @@ def main(force=False):
         print("digest: not due yet")
         return
     top, fresh, cos, plat, earned, jobs = build(state)
-    space_url = os.environ.get("SPACE_URL")
-    if not space_url and os.environ.get("HF_TOKEN"):
-        try:
-            from common.hfstore import username
-            space_url = f"https://huggingface.co/spaces/{username()}/career-hub"
-        except Exception:
-            pass
-    space_url = space_url or "https://huggingface.co/spaces"
+    space_url = os.environ.get("APP_URL") or "https://dashboard.render.com"   # your Render link (repo variable APP_URL)
     body = render(top, fresh, cos, plat, earned, space_url, jobs)
     subject = f"🎯 {len(fresh)} new gigs · {now_ist.strftime('%d %b')}" + (f" · top: {top[0]['title'][:45]}" if top else "")
     if send(body, subject):
