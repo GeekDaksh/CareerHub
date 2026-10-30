@@ -44,6 +44,7 @@ Free tiers only: GitHub Actions (private repo, about 1,000–1,300 of 2,000 min/
 From then on it runs, refreshes and redeploys by itself.
 
 ## Good to know
+- **Backup timer:** GitHub's own schedule sometimes skips runs when GitHub is busy. With `GH_DISPATCH_TOKEN` set in Render (a fine-grained GitHub token for this repo only, permission *Actions: read and write*), the app starts the update itself when you open it and the data is over 7 hours old, and the Status tab gets **Update now** buttons.
 - **Sleep:** on Render's free plan the app sleeps after 15 minutes unused. Opening the link wakes it in about a minute. The collectors don't depend on it.
 - **Why Render, not Hugging Face Spaces:** since July 2026, Hugging Face charges for Docker/Gradio Spaces on its free plan. The data store stays on Hugging Face (free, private).
 - **Login:** the Render link is public, so the app asks for `APP_PASSWORD`. It refuses to show anything if no strong password is set, and slows down guessing (5 tries per 15 minutes).

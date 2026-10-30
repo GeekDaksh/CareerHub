@@ -2365,6 +2365,7 @@ if IN_COLAB:
     files.download(OUT_XLSX)
 
 save_json("run_status.json", {
+    "finished_at": time.time(),   # read by the app's backup timer (app/refresher.py)
     "finished_ist": (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%d %b %Y %H:%M IST"),
     "companies_found": int(len(companies)), "profiled": int(sum(p.get("status") == "ok" for p in profiles.values())),
     "people_searched": int(len(people_db)), "contacts": int(len(contacts)),

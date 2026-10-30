@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
 import config as C
+import refresher
 from common import apply as AP
 from common import feedback as FB
 from common import settings as SETTINGS
@@ -306,11 +307,29 @@ def lessons_view():
 
 
 def payload(fresh=False, force=False):
+    rebuilt = False
     with LOCK:
         age = time.time() - _cache["at"]
         if force or not _cache["data"] or age > 300 or (fresh and age > FRESH_EVERY):
             _cache["data"], _cache["at"] = build(), time.time()
-        return _cache["data"]
+            rebuilt = True
+        d = _cache["data"]
+    if rebuilt:   # backup timer: if GitHub's schedule skipped runs, start the overdue update now
+        started = refresher.check_stale(d.get("gigs_updated"), d.get("roles_updated"),
+                                        (d["health"].get("jobs") or {}).get("finished_at"))
+        d["refresh"] = {**refresher.state(), "started": started}
+    return d
+
+
+@app.post("/api/refresh")
+async def refresh(req: Request):
+    b = await req.json()
+    what = str(b.get("what", ""))
+    if what not in refresher.WORKFLOWS:
+        raise HTTPException(400, "unknown update")
+    res = refresher.dispatch(what, "you pressed Update now")
+    return {"ok": res["ok"], "message": "Started — new results in about 10 minutes (companies: up to 2 hours)."
+            if res["ok"] else f"Not started: {res['why']}"}
 
 
 # ------------------------------------------------------------------ routes

@@ -453,6 +453,7 @@ function careerJobs() {
 }
 ACT.sortset = (d, el) => { S.f.sort = el.value; store.set("f", S.f); render(); };
 ACT.anyloc = () => { S.f.anyloc = !S.f.anyloc; store.set("f", S.f); render(); };
+ACT.runnow = async (d) => { try { const r = await post("/api/refresh", {what: d.what}); toast(r.message, !r.ok); } catch (e) { toast("Couldn't start — try again", true); } };
 ACT.intl = () => { S.f.intl = !S.f.intl; store.set("f", S.f); render(); };
 ACT.foreign = () => { S.f.foreign = !S.f.foreign; store.set("f", S.f); render(); };
 
@@ -664,6 +665,9 @@ function pageStatus() {
       <div class="kpi"><span class="k">Companies profiled</span><b>${esc(j.profiled ?? 0)}</b></div>
       <div class="kpi"><span class="k">Contacts</span><b>${esc(j.contacts ?? 0)}</b></div>
       <div class="kpi"><span class="k">Reliable emails (A/B)</span><b class="tA">${esc(j.key_contacts_with_reliable_email ?? 0)}</b></div></div>
+    <div class="bar-head"><h3>Update now</h3><span class="faint small">${D.refresh?.enabled ? "Runs on GitHub. The app also starts an update by itself when data is over 7 hours old." : "Set GH_DISPATCH_TOKEN in Render to turn this on."}</span></div>
+    <div class="row"><button class="ghost" data-act="runnow" data-what="radar" ${D.refresh?.enabled ? "" : "disabled"}>Update gigs + jobs</button>
+      <button class="ghost" data-act="runnow" data-what="companies" ${D.refresh?.enabled ? "" : "disabled"}>Update companies</button></div>
     <div class="row"><button class="ghost" data-act="refresh">Reload data</button><a class="ghost" href="/logout">Sign out</a>${D.github ? `<a class="ghost" href="https://github.com/${esc(D.github)}/actions" target="_blank" rel="noopener">Run logs ↗</a>` : ""}</div>`;
 }
 

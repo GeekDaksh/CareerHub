@@ -18,6 +18,8 @@ services:
         sync: false
       - key: APP_PASSWORD        # your login password, 10+ characters (you type it)
         sync: false
+      - key: GH_DISPATCH_TOKEN   # optional backup timer: fine-grained GitHub token, this repo only, Actions read+write
+        sync: false
       - key: SESSION_SECRET      # random, made by Render
         generateValue: true
       - key: GITHUB_REPO
