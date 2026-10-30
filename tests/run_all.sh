@@ -9,7 +9,9 @@ for t in test_gates test_llm_budget test_download_limits test_feedback test_gigs
   if python tests/$t.py > "tests/.work/$t.log" 2>&1; then
     echo "PASS  $t  ($(grep -c '^PASS' tests/.work/$t.log) checks)"
   else
-    echo "FAIL  $t — see tests/.work/$t.log"; grep '^FAIL' "tests/.work/$t.log" | head -5; fail=1
+    echo "FAIL  $t — see tests/.work/$t.log"; grep '^FAIL' "tests/.work/$t.log" | head -5
+    grep -q '^FAIL' "tests/.work/$t.log" || tail -25 "tests/.work/$t.log"   # crashed: show the traceback
+    fail=1
   fi
 done
 python eval/verify_metrics.py 2>/dev/null | sed 's/^/      metric check: /' || true

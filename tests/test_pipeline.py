@@ -284,6 +284,11 @@ for i in range(3, len(code)):
 chk(CALLS["search"] == 0 and CALLS["gemini"] == 0 and not LOG["verify"] and LOG["hunter_search"] == 0,
     "third run (everything done) costs no searches / Gemini / Hunter")
 
+# ---- a company with people but no email evidence at all (crashed live run #2: no pattern learned) ----
+ap = ns["apply_pattern"]
+chk(ap(None, "priya", "sharma") is None and ap("{first}", "priya", "") == "priya",
+    "no email pattern learned yet: no crash, no made-up address")
+
 # ---- time budget: a run that is out of time stops each stage and still writes the outputs ----
 ns["RUN_START"] = time.time() - 10_000
 ns["_stage_logged"].clear()

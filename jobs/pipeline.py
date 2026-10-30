@@ -728,7 +728,7 @@ def split_name(full):
     return toks[0].lower(), (toks[-1].lower() if len(toks) > 1 else "")
 
 def apply_pattern(pat, first, last):
-    if not first or (("{last}" in pat or "{l}" in pat) and not last):
+    if not pat or not first or (("{last}" in pat or "{l}" in pat) and not last):   # no pattern learned yet
         return None
     return (pat.replace("{first}", first).replace("{last}", last)
                .replace("{f}", first[:1]).replace("{l}", last[:1]))
