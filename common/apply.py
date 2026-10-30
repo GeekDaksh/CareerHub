@@ -82,7 +82,8 @@ def search_links(role_query, location):
     """One-click searches, filtered to fresher / entry-level, newest first."""
     q = quote_plus(role_query)
     remote = location.startswith("Remote")
-    loc = "India" if remote else location
+    worldwide = location == "Remote (worldwide)"
+    loc = "Worldwide" if worldwide else "India" if remote else location
     li = (f"https://www.linkedin.com/jobs/search/?keywords={q}&location={quote_plus(loc)}"
           f"&f_E=1%2C2&f_TPR=r604800&sortBy=DD" + ("&f_WT=2" if remote else ""))
     slug = "-".join(role_query.lower().replace("/", " ").split())
@@ -99,4 +100,9 @@ def search_links(role_query, location):
         ("Instahyre", g("instahyre.com")),
         ("Cutshort", g("cutshort.io")),
         ("YC startups", g("workatastartup.com")),
-    ]
+    ] + ([   # international remote jobs open to India
+        ("Himalayas (remote, global)", g("himalayas.app/companies")),
+        ("Remotive", g("remotive.com/remote-jobs")),
+        ("We Work Remotely", g("weworkremotely.com/remote-jobs")),
+        ("Wellfound remote", f"https://www.google.com/search?q=site%3Awellfound.com%2Fjobs+{q}+remote+worldwide&tbs=qdr%3Aw"),
+    ] if worldwide else [])

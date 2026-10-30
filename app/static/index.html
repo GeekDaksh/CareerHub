@@ -280,6 +280,7 @@ function roleCard(r, compact) {
       ${(r.roles || []).slice(0, 2).map((x) => `<span class="tag">${esc(x)}</span>`).join("")}
       ${(r.sectors || []).slice(0, 2).map((x) => `<span class="tag bB">${esc(x)}</span>`).join("")}
       ${r.location_ok === false ? '<span class="tag bD">outside your locations</span>' : ""}
+      ${r.intl ? '<span class="tag bB">International</span>' : ""}${r.pay_text ? `<span class="tag bA">${esc(r.pay_text)}</span>` : ""}
       <span class="tag">${esc(ago(r.posted || r.first_seen))}</span></div>
     ${compact ? "" : (r.trust?.good || []).map((x) => `<p class="flag ok">${esc(x)}</p>`).join("") + (r.trust?.warn || []).map((x) => `<p class="flag warn">${esc(x)}</p>`).join("")}
     ${r.referral && !compact ? `<p class="flag ok">Referral contact: ${esc(r.referral.name)} (${esc(r.referral.role || "")})</p>` : ""}
@@ -299,13 +300,15 @@ function roleCard(r, compact) {
 function gigCard(g, compact) {
   const fresh = Date.now() / 1000 - (g.first_seen || 0) < 86400;
   const s = st("gig:" + g.id);
-  const pay = g.pay_inr ? `~${inr(g.pay_inr)}${g.pay_type === "hourly" ? "/hr" : g.pay_type === "fixed" ? " fixed" : ""}` : "";
+  const rupees = g.pay_inr ? `~${inr(g.pay_inr)}${g.pay_type === "hourly" ? "/hr" : g.pay_type === "fixed" ? " fixed" : ""}` : "";
+  const pay = g.pays_foreign ? `${g.pay_text}${rupees ? " · " + rupees : ""}` : rupees;
   return `<article class="card ${fresh ? "fresh" : ""}">
     <div class="card-top"><span>${esc(g.source)}${g.company ? " · " + esc(g.company) : ""}</span>${verdictTag(g.trust?.verdict)}</div>
     <h4><a href="${safeUrl(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.title)}</a></h4>
     ${compact ? "" : `<p class="sum">${esc(g.ai?.summary || g.desc || "")}</p>`}
     <div class="meta"><span class="tag who">${esc(D.catalog.gig_types[g.category] || g.category)}</span>
       ${pay ? `<span class="tag bA">${esc(pay)}</span>` : ""}
+      ${g.pays_foreign ? `<span class="tag bB">Pays in ${esc(String(g.pay_text).split(" ")[0])}</span>` : g.intl ? '<span class="tag bB">International client</span>' : ""}
       ${Number.isFinite(g.bids) ? `<span class="tag">${g.bids} bids</span>` : ""}
       ${g.work_type && g.work_type !== "unknown" ? `<span class="tag">${esc(g.work_type)}</span>` : ""}
       ${g.eligibility === "check" ? '<span class="tag bC">check location</span>' : ""}
@@ -431,14 +434,15 @@ function careerJobs() {
   let list = openRoles().filter((r) =>
     (!r.sectors?.length || r.sectors.some((x) => fS.includes(x)) || fS.length === sectors.length) &&
     fT.map((x) => x.toLowerCase()).includes(r.trust?.verdict) && fK.includes(kindOf[r.source_kind]) &&
-    (S.f.anyloc || r.location_ok !== false) &&
+    (S.f.anyloc || r.location_ok !== false) && (!S.f.intl || r.intl) &&
     (!q || `${r.title} ${r.company} ${r.location}`.toLowerCase().includes(q)));
   if (S.f.sort === "new") list.sort((a, b) => (b.posted || b.first_seen) - (a.posted || a.first_seen));
   return `<div class="page-head"><h2>Jobs</h2><p>Fresher and entry-level only. ${D.senior_hidden} senior roles hidden, ${D.blocked.length} risky posts blocked (see Safety). Sources: your target companies' careers pages, your job-alert emails (LinkedIn, Naukri, Internshala…), remote boards and public job pages.</p></div>
     <div class="filters">
       <div class="frow"><input class="search" id="q" placeholder="Search title, company, city…" value="${esc(S.f.q || "")}">
         <select class="sel" data-change="sortset"><option value="best">Best match</option><option value="new" ${S.f.sort === "new" ? "selected" : ""}>Newest</option></select>
-        <button class="mini ${S.f.anyloc ? "on" : ""}" data-act="anyloc">Any location</button></div>
+        <button class="mini ${S.f.anyloc ? "on" : ""}" data-act="anyloc">Any location</button>
+        <button class="mini ${S.f.intl ? "on" : ""}" data-act="intl" title="Remote jobs at international companies">International only</button></div>
       <div class="frow" data-all='${esc(JSON.stringify(sectors))}'><span class="lab">Sector</span>${chips(sectors, fS, "sec")}</div>
       <div class="frow" data-all='${esc(JSON.stringify(srcs))}'><span class="lab">Source</span>${chips(srcs, fK, "src")}</div>
       <div class="frow" data-all='${esc(JSON.stringify(trusts))}'><span class="lab">Trust</span>${chips(trusts, fT, "trust")}<span class="faint small">Locations: ${esc(locs.join(", "))} — change in Settings</span></div>
@@ -448,6 +452,8 @@ function careerJobs() {
 }
 ACT.sortset = (d, el) => { S.f.sort = el.value; store.set("f", S.f); render(); };
 ACT.anyloc = () => { S.f.anyloc = !S.f.anyloc; store.set("f", S.f); render(); };
+ACT.intl = () => { S.f.intl = !S.f.intl; store.set("f", S.f); render(); };
+ACT.foreign = () => { S.f.foreign = !S.f.foreign; store.set("f", S.f); render(); };
 
 function boardOf(prefix, cols, emptyMsg) {
   const items = Object.entries(T()).filter(([k, v]) => k.startsWith(prefix) && v.meta);
@@ -537,9 +543,11 @@ function freeGigs() {
   const srcs = [...new Set(D.gigs.map((g) => g.source))];
   const fTy = fsel("gtype", types), fSr = fsel("gsrc", srcs), q = (S.f.q || "").toLowerCase();
   const list = openGigs().filter((g) => fTy.includes(D.catalog.gig_types[g.category]) && fSr.includes(g.source) &&
+    (!S.f.foreign || g.pays_foreign) &&
     (!q || `${g.title} ${g.company} ${g.desc}`.toLowerCase().includes(q)));
   return `<div class="page-head"><h2>Gigs</h2><p>Paid freelance and contract work you can take from India. Already removed: scams, not open to India, under ₹500/hr, and senior-only roles. Full-time jobs are on the Career side.</p></div>
-    <div class="filters"><div class="frow"><input class="search" id="q" placeholder="Search gigs…" value="${esc(S.f.q || "")}"></div>
+    <div class="filters"><div class="frow"><input class="search" id="q" placeholder="Search gigs…" value="${esc(S.f.q || "")}">
+      <button class="mini ${S.f.foreign ? "on" : ""}" data-act="foreign" title="Only gigs with a stated budget in USD, EUR, GBP…">Pays in $ / € / £</button></div>
       <div class="frow" data-all='${esc(JSON.stringify(types))}'><span class="lab">Type</span>${chips(types, fTy, "gtype")}</div>
       <div class="frow" data-all='${esc(JSON.stringify(srcs))}'><span class="lab">Source</span>${chips(srcs, fSr, "gsrc")}</div></div>
     <p class="dim small">${list.length} gigs</p>
@@ -587,6 +595,12 @@ function freeKit() {
       <tr><td>LLM chatbot / RAG prototype</td><td>₹8,000–₹25,000 fixed</td><td>$25–40/hr</td></tr>
       <tr><td>Technical article (1,000–1,500 words)</td><td>₹2,000–₹4,000</td><td>₹5,000+</td></tr>
       <tr><td>AI-task platforms</td><td>the platform's rate</td><td>higher tiers unlock with quality</td></tr></tbody></table></div>
+    <div class="bar-head"><h3>Getting paid in dollars</h3><span class="faint small">Gigs with a stated $/€/£ budget have a "Pays in USD" tag — use the filter on the Gigs tab.</span></div>
+    <div class="tbl"><table><thead><tr><th>Where</th><th>How it reaches you</th></tr></thead><tbody>
+      <tr><td>Freelancer.com, remote boards, HN threads</td><td>Collected 4× a day into Gigs and Jobs (filter: <b>Pays in $ / € / £</b>, <b>International only</b>)</td></tr>
+      <tr><td>Upwork</td><td>No public feed since Aug 2024, so Career Hub can't collect it. Make a profile, save 2–3 searches (Python automation, AI chatbot) and turn on job alerts in Upwork's own settings.</td></tr>
+      <tr><td>AI-task platforms (Outlier, Mercor, Alignerr…)</td><td>Pay in USD per hour — see the AI tasks tab</td></tr>
+      <tr><td>Receiving money</td><td>Use the platform's own payout to your Indian bank or PayPal. Never pay to "unlock" a payment — that is the most common gig scam.</td></tr></tbody></table></div>
     <div class="bar-head"><h3>Proposal formula</h3></div>
     <ol class="steps"><li><b>Their problem first</b><p>Use their own words, not "I".</p></li><li><b>One proof</b><p>A project or skill that matches.</p></li>
       <li><b>Your first step</b><p>Show you've already thought about it.</p></li><li><b>One question</b><p>It starts a conversation. Send within hours while bids are low.</p></li></ol>

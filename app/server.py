@@ -116,7 +116,7 @@ def cread(path):
 # ------------------------------------------------------------------ payload
 GIG_FIELDS = ["id", "source", "title", "url", "company", "posted", "first_seen", "pay_type", "pay_inr", "currency",
               "budget_min", "budget_max", "bids", "work_type", "category", "eligibility", "score", "why", "ai", "trust",
-              "level", "project_match"]
+              "level", "project_match", "intl", "pay_text", "pays_foreign"]
 
 
 def build():

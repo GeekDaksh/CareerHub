@@ -109,7 +109,26 @@ def scam_flags(g):
 
 
 def inr(v, cur):
-    return None if v is None else v * C.FX_TO_INR.get(str(cur or "USD").upper(), 88)
+    """Convert to ₹. An unknown currency gives None (pay unknown) — never a silent guess."""
+    rate = C.FX_TO_INR.get(str(cur or "").upper())
+    return None if v is None or rate is None else v * rate
+
+
+def pay_text(g):
+    """Pay in the client's own currency, e.g. 'USD 15–25/hr'. Empty when no amount is given."""
+    lo, hi, cur = g.get("budget_min"), g.get("budget_max"), str(g.get("currency") or "").upper()
+    if not (lo or hi) or not cur:
+        return ""
+    rng = "–".join(f"{x:,.0f}" for x in dict.fromkeys(x for x in (lo, hi) if x))
+    per = {"hourly": "/hr", "fixed": " fixed", "salary": "/yr"}.get(g.get("pay_type"), "")
+    return f"{cur} {rng}{per}"
+
+
+def is_intl(g):
+    """International client / employer. Freelancer.com shows the client's currency; the remote boards are global."""
+    if g["source"] == "Freelancer.com":
+        return str(g.get("currency") or "").upper() not in ("", "INR")
+    return True
 
 
 def pay_inr(g):
@@ -255,6 +274,9 @@ def collect(state, health):
         ("Jobicy", S.jobicy),
         ("We Work Remotely", S.weworkremotely),
         ("Hacker News", S.hn_freelancer),
+        ("Working Nomads", S.working_nomads),
+        ("HN Who is hiring", S.hn_hiring),
+        ("Remote-first companies", lambda: S.remote_companies(C.REMOTE_COMPANIES)),
     ]
     if NOW - state.get("remotive_last", 0) >= 11 * 3600:   # Remotive asks for a few calls per day at most
         jobs.append(("Remotive", S.remotive))
@@ -307,6 +329,10 @@ def run():
         g["category"] = category(g)
         g["scam"], allowed_note = FB.apply(g, scam_flags(g), lessons)
         g["pay_inr"] = pay_inr(g)
+        g["pay_text"] = pay_text(g)
+        g["intl"] = is_intl(g)
+        cur = str(g.get("currency") or "").upper()
+        g["pays_foreign"] = bool(g["pay_text"]) and cur != "INR" and cur in C.FX_TO_INR   # a known foreign currency
         g["score"], g["why"] = score(g)
         g["level"] = levels.level(g["title"], g.get("desc"))
         board = g["source"] not in ("Freelancer.com", "Hacker News")

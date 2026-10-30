@@ -163,6 +163,18 @@ FX_TO_INR = {"INR": 1, "USD": 88, "EUR": 95, "GBP": 112, "AUD": 57, "CAD": 63, "
 # ============================ AI-TASK PLATFORMS ============================
 # Facts as reported by public comparisons in Oct 2026 (parailabs.com/compare/ai-training-platforms,
 # herworkcircle.com). Pay and eligibility change often — check each site before applying.
+# Remote-first / global companies whose OWN job boards are read directly (official = verified source).
+# Only jobs open to India (India, APAC, Asia, worldwide) are kept. Board names were checked live on 2026-10-30.
+REMOTE_COMPANIES = [
+    {"name": "GitLab", "ats": "greenhouse", "slug": "gitlab"},
+    {"name": "Canonical", "ats": "greenhouse", "slug": "canonical"},
+    {"name": "Elastic", "ats": "greenhouse", "slug": "elastic"},
+    {"name": "MongoDB", "ats": "greenhouse", "slug": "mongodb"},
+    {"name": "Datadog", "ats": "greenhouse", "slug": "datadog"},
+    {"name": "Supabase", "ats": "ashby", "slug": "supabase"},
+    {"name": "Zapier", "ats": "ashby", "slug": "zapier"},
+]
+
 AI_PLATFORMS = [
     {"name": "Mercor", "url": "https://mercor.com", "india": "Yes (India contractor page)",
      "pay": "$10–$190/hr reported; coding & expert roles pay most", "fit": "Coding, ML, STEM projects",

@@ -55,7 +55,8 @@ JOB_LINK = {
 SEARCH_SITES = [("LinkedIn", "linkedin.com/jobs/view"), ("Naukri", "naukri.com/job-listings"),
                 ("Internshala", "internshala.com"), ("Wellfound", "wellfound.com/jobs"),
                 ("Instahyre", "instahyre.com"), ("Cutshort", "cutshort.io/job")]
-BOARD_SOURCES = {"RemoteOK", "Himalayas", "Jobicy", "Remotive", "We Work Remotely"}
+BOARD_SOURCES = {"RemoteOK", "Himalayas", "Jobicy", "Remotive", "We Work Remotely", "Working Nomads",
+                 "HN Who is hiring", "Remote-first companies"}
 
 
 # ---------------------------------------------------------------- helpers
@@ -280,8 +281,9 @@ def from_boards():
         if g.get("work_type") not in ("full-time", "internship", "unknown"):
             continue   # contract / part-time / freelance belong to the Freelance side
         out.append({"title": g["title"], "company": g.get("company"), "location": g.get("location") or "Remote",
-                    "url": g["url"], "platform": g["source"], "source_kind": "board", "posted": g.get("posted"),
-                    "desc": g.get("desc") or "", "work_type": g.get("work_type"), "eligibility": g.get("eligibility")})
+                    "url": g["url"], "platform": g["source"], "source_kind": "ats" if g.get("official") else "board",
+                    "posted": g.get("posted"), "desc": g.get("desc") or "", "work_type": g.get("work_type"),
+                    "eligibility": g.get("eligibility"), "intl": True, "pay_text": g.get("pay_text") or ""})
     return out
 
 

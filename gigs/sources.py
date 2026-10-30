@@ -211,6 +211,99 @@ def weworkremotely():
     return out
 
 
+# ---------------------------------------------------------------- Working Nomads (remote jobs, public JSON)
+def working_nomads():
+    d = get("https://www.workingnomads.com/api/exposed_jobs/")
+    out = []
+    for j in d if isinstance(d, list) else []:
+        if not isinstance(j, dict) or not j.get("url") or not j.get("title"):
+            continue
+        tags = j.get("tags") if isinstance(j.get("tags"), list) else [t.strip() for t in str(j.get("tags") or "").split(",") if t.strip()]
+        out.append({
+            "id": f"wn:{j['url']}", "source": "Working Nomads", "title": strip_html(j["title"], 160), "url": j["url"],
+            "company": j.get("company_name"), "desc": strip_html(j.get("description")), "posted": to_epoch(j.get("pub_date")),
+            "pay_type": "unknown", "budget_min": None, "budget_max": None, "currency": None,
+            "location": j.get("location") or "", "restrictions": [],
+            "work_type": work_type_of(j.get("title"), " ".join(tags)), "tags": tags[:8] + [j.get("category_name") or ""],
+            "bids": None,
+        })
+    return out
+
+
+# ---------------------------------------------------------------- remote-first companies' own job boards
+def _in_reach(loc):
+    """Location open to someone in India: India, APAC/Asia, or worldwide."""
+    return bool(re.search(r"india|bengaluru|bangalore|mumbai|pune|hyderabad|gurugram|gurgaon|noida|delhi|chennai|"
+                          r"apac|asia|worldwide|anywhere|global", str(loc or ""), re.I))
+
+
+def remote_companies(companies):
+    out, errors = [], []
+    for c in companies:
+        try:
+            if c["ats"] == "greenhouse":
+                d = get(f"https://boards-api.greenhouse.io/v1/boards/{c['slug']}/jobs")
+                jobs = [(j.get("id"), j.get("title"), j.get("absolute_url"), (j.get("location") or {}).get("name"),
+                         j.get("updated_at") or j.get("first_published"), "") for j in d.get("jobs") or []]
+            elif c["ats"] == "lever":
+                d = get(f"https://api.lever.co/v0/postings/{c['slug']}", params={"mode": "json"})
+                jobs = [(j.get("id"), j.get("text"), j.get("hostedUrl"),
+                         "; ".join(filter(None, [(j.get("categories") or {}).get("location"), j.get("workplaceType")])),
+                         j.get("createdAt"), (j.get("categories") or {}).get("commitment") or "") for j in d or []]
+            else:
+                d = get(f"https://api.ashbyhq.com/posting-api/job-board/{c['slug']}")
+                jobs = [(j.get("id"), j.get("title"), j.get("jobUrl"),
+                         "; ".join(filter(None, [j.get("location")] + [x.get("location") for x in j.get("secondaryLocations") or []
+                                                                     if isinstance(x, dict)])),
+                         j.get("publishedAt"), j.get("employmentType") or "") for j in d.get("jobs") or []]
+        except Exception as e:
+            errors.append(f"{c['name']}: {str(e)[:60]}")
+            continue
+        for jid, title, url, loc, when, kind in jobs:
+            if not (jid and title and url) or not _in_reach(loc):
+                continue
+            remote = bool(re.search(r"remote|home based|anywhere|worldwide|global", str(loc), re.I))
+            out.append({
+                "id": f"rc:{c['slug']}:{jid}", "source": "Remote-first companies", "title": title, "url": url,
+                "company": c["name"], "desc": "", "posted": to_epoch(when), "pay_type": "unknown",
+                "budget_min": None, "budget_max": None, "currency": None, "location": loc,
+                "restrictions": [], "work_type": work_type_of(title, kind) if work_type_of(title, kind) != "unknown" else "full-time",
+                "tags": ["remote" if remote else "India office", c["name"]], "bids": None, "official": True,
+            })
+    if errors and not out:
+        raise RuntimeError("; ".join(errors[:3]))
+    return out
+
+
+# ---------------------------------------------------------------- Hacker News monthly "Who is hiring?" (remote, open to India)
+def hn_hiring(limit=400):
+    d = get("https://hn.algolia.com/api/v1/search_by_date",
+            params={"tags": "story,author_whoishiring", "query": "who is hiring", "hitsPerPage": 5})
+    story = next((h for h in d.get("hits", []) if (h.get("title") or "").lower().startswith("ask hn: who is hiring")), None)
+    if not story:
+        return []
+    item = get(f"https://hn.algolia.com/api/v1/items/{story['objectID']}")
+    out = []
+    for c in (item.get("children") or [])[:limit]:
+        text = strip_html(c.get("text"), 2500)
+        first = text.split("\n")[0]
+        if "|" not in first or not re.search(r"\bremote\b", first, re.I):
+            continue
+        if not re.search(r"worldwide|anywhere|global|india|apac|asia|any time ?zone", text[:800], re.I):
+            continue          # 'REMOTE (US)' etc. is not open to India
+        parts = [p.strip() for p in first.split("|") if p.strip()]
+        role = next((p for p in parts[1:] if re.search(r"engineer|developer|scientist|analyst|intern|ml|ai|data|"
+                                                        r"designer|writer|marketing|research", p, re.I)), parts[1] if len(parts) > 1 else first)
+        out.append({
+            "id": f"hnhire:{c.get('id')}", "source": "HN Who is hiring", "title": role[:140], "company": parts[0][:80],
+            "url": f"https://news.ycombinator.com/item?id={c.get('id')}", "desc": text,
+            "posted": to_epoch(c.get("created_at_i") or c.get("created_at")), "pay_type": "unknown",
+            "budget_min": None, "budget_max": None, "currency": None, "location": first[:200], "restrictions": [],
+            "work_type": work_type_of(first) if work_type_of(first) != "unknown" else "full-time", "tags": [], "bids": None,
+        })
+    return out
+
+
 # ---------------------------------------------------------------- Hacker News monthly "Freelancer? Seeking freelancer?"
 def hn_freelancer():
     d = get("https://hn.algolia.com/api/v1/search_by_date",
