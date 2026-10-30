@@ -205,7 +205,7 @@ MX = {"genomind.ai": {"has_mx": True, "provider": "Google Workspace", "hosts": [
       "shipflow.in": {"has_mx": True, "provider": "Zoho Mail", "hosts": ["mx.zoho.in"]},
       "labloop.ai": {"has_mx": True, "provider": "Google Workspace", "hosts": ["aspmx.l.google.com"]}}
 
-ns = {"__file__": "/home/claude/career-hub/jobs/pipeline.py"}
+ns = {"__file__": os.path.join(ROOT, "jobs", "pipeline.py")}
 for i, c in enumerate(code):
     print(f"\n========== CODE CELL {i + 1} ==========")
     exec(compile(c, f"cell{i + 1}", "exec"), ns)
