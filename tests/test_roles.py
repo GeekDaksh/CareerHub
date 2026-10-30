@@ -30,8 +30,9 @@ MAILS = [
       """<a href="https://www.naukri.com/job-listings-data-entry-work-from-home-123">Data Entry Executive</a> QuickJobs · pay registration fee 499, contact HR on WhatsApp"""),
  mail("Random <hr@scam.xyz>", "Offer", "<a href='https://bit.ly/x'>Job</a>"),
 ]
+TIMEOUTS = []
 class FakeIMAP:
-    def __init__(self, *a): pass
+    def __init__(self, *a, **k): TIMEOUTS.append(k.get("timeout"))
     def login(self, u, p): pass
     def select(self, *a, **k): return ("OK", [b"3"])
     def uid(self, cmd, *args):
@@ -62,6 +63,7 @@ by = {r["title"]: r for r in R}
 doc = json.load(open(os.path.join(D, "roles/roles.json")))
 chk("Machine Learning Intern" in by and by["Machine Learning Intern"]["source_kind"] == "ats" and by["Machine Learning Intern"]["trust"]["verdict"] == "verified", "careers-page intern role -> verified")
 chk(by["Machine Learning Intern"].get("referral", {}).get("name") == "Priya Sharma", "referral contact attached from outreach plan")
+chk(TIMEOUTS and all(t and t <= 60 for t in TIMEOUTS), "mail server connection has a time limit (never hangs the run)")
 chk("Machine Learning Engineer" in by and by["Machine Learning Engineer"]["platform"] == "LinkedIn" and by["Machine Learning Engineer"]["url"] == "https://www.linkedin.com/jobs/view/4012345678", "LinkedIn alert parsed, tracking stripped")
 chk(by["Machine Learning Engineer"]["trust"]["verdict"] == "likely" and by["Machine Learning Engineer"]["level"] == "entry", "alert role: likely real, entry-level")
 chk("Senior Data Scientist" not in by and "Lead ML Engineer" not in by and doc["senior_hidden"] >= 2, f"senior roles hidden ({doc['senior_hidden']})")

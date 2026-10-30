@@ -55,6 +55,7 @@ JOB_LINK = {
 SEARCH_SITES = [("LinkedIn", "linkedin.com/jobs/view"), ("Naukri", "naukri.com/job-listings"),
                 ("Internshala", "internshala.com"), ("Wellfound", "wellfound.com/jobs"),
                 ("Instahyre", "instahyre.com"), ("Cutshort", "cutshort.io/job")]
+SEARCH_BUDGET = float(os.environ.get("ROLE_SEARCH_BUDGET_SECONDS", "240"))
 BOARD_SOURCES = {"RemoteOK", "Himalayas", "Jobicy", "Remotive", "We Work Remotely", "Working Nomads",
                  "HN Who is hiring", "Remote-first companies"}
 
@@ -238,7 +239,7 @@ def from_alerts(state, health):
     done = set(state.get("alert_ids", []))
     out, n_mail = [], 0
     try:
-        M = imaplib.IMAP4_SSL("imap.gmail.com", 993)
+        M = imaplib.IMAP4_SSL("imap.gmail.com", 993, timeout=30)   # never wait forever on the mail server
         M.login(user, pw)
         M.select("INBOX", readonly=True)
         froms = " OR ".join(f"from:{d}" for d in ALERT_SENDERS)
@@ -312,11 +313,13 @@ def from_search(s, state, health):
         return []
     start = state.get("search_cursor", 0) % len(qs)
     batch = (qs[start:] + qs[:start])[:C.ROLE_SEARCHES_PER_RUN]
-    state["search_cursor"] = start + len(batch)
     searcher = Searcher(os.path.join(RDIR, "search_cache.json"))
-    results = []
+    results, t0, done = [], time.time(), 0
     for name, q in batch:
-        for r in searcher.search(q):
+        if time.time() - t0 > SEARCH_BUDGET:   # search sites slow down free users; stop and continue next run
+            break
+        done += 1
+        for r in searcher.search(q) or []:
             p = trust.platform_of(r["url"])
             if p and p != "Company careers (ATS)":
                 results.append({**r, "platform": p})
@@ -344,7 +347,8 @@ def from_search(s, state, health):
                 if m:
                     out.append({"title": m.group(2), "company": m.group(1), "location": m.group(3), "desc": r["snippet"],
                                 "url": r["url"], "platform": "LinkedIn", "source_kind": "search", "posted": None})
-    health["Web search (job pages)"] = {"ok": True, "count": len(out), "queries": len(batch), "at": NOW}
+    state["search_cursor"] = start + done      # unfinished queries go first next time
+    health["Web search (job pages)"] = {"ok": True, "count": len(out), "queries": done, "at": NOW}
     return out
 
 
@@ -385,11 +389,16 @@ def run():
             health[name] = {"ok": True, "count": len(got), "at": NOW}
         except Exception as e:
             health[name] = {"ok": False, "count": 0, "at": NOW, "error": str(e)[:200]}
+        print(f"  {name}: {health[name]['count']}", "ok" if health[name]["ok"] else "FAILED " + health[name].get("error", ""))
+    t = time.time()
     raw += from_alerts(state, health)
+    print(f"  Job-alert emails: {health.get('Job-alert emails', {}).get('count')} in {time.time() - t:.0f}s")
+    t = time.time()
     try:
         raw += from_search(s, state, health)
     except Exception as e:
         health["Web search (job pages)"] = {"ok": False, "count": 0, "at": NOW, "error": str(e)[:200]}
+    print(f"  Web search (job pages): {health['Web search (job pages)'].get('count')} in {time.time() - t:.0f}s")
 
     roles, blocked, senior, seen = {}, [], 0, set()
     for r in raw:
