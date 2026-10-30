@@ -198,6 +198,23 @@ LINKEDIN_ROLE_WORDS_CORP = ["head of AI", "director", "research", "talent acquis
 PEOPLE_ENOUGH = 5            # stop LinkedIn searches for a company once this many key people are found
 SEARCH_CACHE_DAYS = 30       # reuse a search result for this many days
 
+# ---------- Time budget (GitHub's job limit is 2 hours; free minutes are limited) ----------
+# Each stage stops at its share of the budget; unfinished work is saved and continues on the next run.
+RUN_START = time.time()
+RUN_BUDGET_MIN = float(os.environ.get("JOB_FINDER_BUDGET_MIN", "100"))
+STAGE_END = {"discovery": 0.30, "extract": 0.40, "profile": 0.62, "people": 0.78, "emails": 0.88, "drafts": 0.94}
+DISCOVERY_PER_RUN = 150      # web searches per run for finding new companies (the rest continue next run)
+
+def stage_over(stage):
+    """True once this stage has used its share of the run's time budget."""
+    over = time.time() - RUN_START > STAGE_END[stage] * RUN_BUDGET_MIN * 60
+    if over and stage not in _stage_logged:
+        _stage_logged.add(stage)
+        print(f"  ⏱ {stage}: time share used — the rest continues next run")
+    return over
+
+_stage_logged = set()
+
 # ---------- Free-tier budgets ----------
 MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]   # tried first; other free Gemini/Gemma models are added automatically
 GROQ_MODELS = ["llama-3.3-70b-versatile", "meta-llama/llama-4-scout-17b-16e-instruct", "openai/gpt-oss-120b"]
@@ -382,17 +399,29 @@ def ask_groq(prompt, temperature=0.1):
 # ---------- Web search: DuckDuckGo, with Google (Serper) as backup / for people ----------
 _serper_used = 0
 
+_ddg_fails = 0
+
 def ddg_search(query, n=10):
+    """DuckDuckGo. After 4 blocked searches in a row it is skipped for the rest of the run (it blocks
+    cloud machines for a while, and each blocked try costs up to a minute of back-off)."""
+    global _ddg_fails
+    if _ddg_fails >= 4:
+        return None
     for attempt in range(3):
         try:
             res = DDGS().text(query, region=SEARCH_REGION, max_results=n) or []
             time.sleep(SEARCH_PAUSE + random.random())
+            _ddg_fails = 0
             return [{"title": r.get("title", ""), "url": r.get("href", ""), "snippet": r.get("body", "")}
                     for r in res if r.get("href")]
         except Exception as e:
             if "no results" in str(e).lower():
+                _ddg_fails = 0
                 return []
             time.sleep(SEARCH_PAUSE * 4 * (attempt + 1))
+    _ddg_fails += 1
+    if _ddg_fails == 4:
+        print("  DuckDuckGo is blocking this machine — skipping it for the rest of this run")
     return None   # None = search failed (blocked), [] = no results
 
 def serper_search(query, n=10):
@@ -847,9 +876,15 @@ queries = list(dict.fromkeys(queries))
 search_log = load_json("search_results.json", {})
 _stale = (datetime.now() - timedelta(days=DISCOVERY_REFRESH_DAYS)).strftime("%Y-%m-%d")
 todo = [q for q in queries if q[1] not in search_log or search_log[q[1]].get("date", "2000-01-01") < _stale]
-print(f"{len(queries)} searches in total, {len(todo)} to do now")
+print(f"{len(queries)} searches in total, {len(todo)} left, up to {DISCOVERY_PER_RUN} this run")
+todo = todo[:DISCOVERY_PER_RUN]
 for i, (dom, q) in enumerate(todo, 1):
-    search_log[q] = {"domain": dom, "results": web_search(q), "date": today()}
+    if stage_over("discovery"):
+        break
+    res = web_search_raw(q)
+    if res is None:          # every engine failed (blocked): don't mark it done, retry next run
+        continue
+    search_log[q] = {"domain": dom, "results": res, "date": today()}
     if i % 10 == 0 or i == len(todo):
         save_json("search_results.json", search_log)
         print(f"  {i}/{len(todo)} searches done")
@@ -886,6 +921,9 @@ stop = False
 for dom in SEARCH_TERMS:
     grp = [r for r in pending if r["domain"] == dom]
     for i in range(0, len(grp), 30):
+        if stage_over("extract"):
+            stop = True
+            break
         batch = grp[i:i + 30]
         text = "\n".join(f"- {r['title']} | {r['url']} | {r['snippet']}" for r in batch)
         out = ask_gemini(EXTRACT_PROMPT.format(dom=dom, text=text))
@@ -1262,6 +1300,8 @@ print(f"Profiled so far: {sum(1 for p in profiles.values() if p.get('status') ==
       f"· left after this: {max(len(companies) - len(profiles) - len(todo), 0)}")
 
 for n, r in enumerate(todo, 1):
+    if stage_over("profile"):
+        break
     name = r["name"]
     field = (r.get("domains") or "").split(",")[0]
     print(f"[{n}/{len(todo)}] {name}")
@@ -1613,6 +1653,8 @@ for n in order:
     print(f"  top-up {n}: {len(e['people'])} people")
 
 for k, n in enumerate(todo, 1):
+    if stage_over("people"):
+        break
     p = profiles[n]
     pr = p["profile"]
     comp = clean_company(pr.get("official_name") or n)
@@ -1769,9 +1811,12 @@ def grade_tied(source, conf):
 
 
 companies_mail, all_contacts = {}, []
+_emails_cut = False
 for n in work_order(profiles):
     if n not in people_db:
         continue
+    if not _emails_cut and stage_over("emails"):
+        _emails_cut = True    # keep listing companies already worked on, but stop spending lookups
     p, pdb = profiles[n], people_db[n]
     web_dom = domain_of(p.get("website"))
     site = to_dict_emails(p["crawl"].get("emails"), p.get("website"))
@@ -1786,7 +1831,7 @@ for n in work_order(profiles):
 
     org = p["crawl"].get("github_org")
     if org and mail_dom:
-        if org not in gh_cache and not _gh_blocked:
+        if org not in gh_cache and not _gh_blocked and not _emails_cut:
             res = github_emails(org)
             if res is not None:
                 gh_cache[org] = res
@@ -1796,9 +1841,9 @@ for n in work_order(profiles):
 
     mx = None
     if mail_dom:
-        if mail_dom not in mx_cache or mx_cache[mail_dom].get("has_mx") is None:
+        if (mail_dom not in mx_cache or mx_cache[mail_dom].get("has_mx") is None) and not _emails_cut:
             mx_cache[mail_dom] = mx_lookup(mail_dom)
-        mx = mx_cache[mail_dom]
+        mx = mx_cache.get(mail_dom)
 
     own = {}
     for e in evidence:
@@ -1919,7 +1964,8 @@ if zb_left + hv_left > 0:
         top = sorted(by_co.get(n, []), key=lambda c: contact_sort_key(c, cm["startup"]))[:2]
         for c in top:
             tries = 0
-            while (zb_left + hv_left > 0 and c.get("email") and c["email_grade"] in ("C · likely", "D · guess")
+            while (not stage_over("emails") and zb_left + hv_left > 0 and c.get("email")
+                   and c["email_grade"] in ("C · likely", "D · guess")
                    and tries < VERIFY_TRIES_PER_PERSON and not cm.get("accept_all")
                    and cm.get("receives_mail") is not False):
                 v = verify_email(c["email"])
@@ -2198,6 +2244,8 @@ Return JSON: {{"subject": str, "body": str}}"""
 drafts = load_json("drafts.json", {})
 made = 0
 for r in plan.head(DRAFT_TOP_N).to_dict("records"):
+    if stage_over("drafts"):
+        break
     if not isinstance(r.get("contact_1"), str):   # no person found: nothing to draft
         continue
     k = f"{r['_key']}|{r['contact_1']}"

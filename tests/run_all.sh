@@ -4,7 +4,7 @@ set -u
 cd "$(dirname "$0")/.."
 mkdir -p tests/.work
 fail=0
-for t in test_gates test_llm_budget test_download_limits test_feedback test_gigs test_roles test_remote test_auth test_deploy test_attacks; do
+for t in test_gates test_llm_budget test_download_limits test_feedback test_gigs test_roles test_pipeline test_remote test_auth test_deploy test_attacks; do
   [ -f "tests/$t.py" ] || continue
   if python tests/$t.py > "tests/.work/$t.log" 2>&1; then
     echo "PASS  $t  ($(grep -c '^PASS' tests/.work/$t.log) checks)"

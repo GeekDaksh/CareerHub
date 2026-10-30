@@ -12,7 +12,7 @@ permissions:
 jobs:
   pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 120   # the job finder stops each stage on its time share (JOB_FINDER_BUDGET_MIN=100)
     env:
       DATA_DIR: data
       PYTHONUNBUFFERED: "1"      # show each source's result live in the run log
