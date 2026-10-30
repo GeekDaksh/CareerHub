@@ -17,10 +17,28 @@ SESSION = requests.Session()
 SESSION.headers.update(UA)
 
 
+MAX_SECONDS = 60          # whole download, not per chunk: a server that trickles bytes can't stall the run
+MAX_BYTES = 25_000_000
+
+
 def get(url, params=None, timeout=30, as_json=True):
-    r = SESSION.get(url, params=params, timeout=timeout)
-    r.raise_for_status()
-    return r.json() if as_json else r.text
+    start = time.time()
+    with SESSION.get(url, params=params, timeout=timeout, stream=True) as r:
+        r.raise_for_status()
+        buf = bytearray()
+        r.raw.decode_content = True
+        while True:   # read1 returns whatever has arrived (up to 64 KB), so the deadline is checked often
+            chunk = r.raw.read1(65536) if hasattr(r.raw, "read1") else r.raw.read(65536)
+            if not chunk:
+                break
+            buf += chunk
+            if len(buf) > MAX_BYTES:
+                raise RuntimeError(f"response over {MAX_BYTES // 1_000_000} MB")
+            if time.time() - start > MAX_SECONDS:
+                raise RuntimeError(f"download took over {MAX_SECONDS}s")
+        text = bytes(buf).decode(r.encoding or "utf-8", "replace")
+    import json as _json
+    return _json.loads(text) if as_json else text
 
 
 def strip_html(s, limit=1500):
