@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 240
     env:
       DATA_DIR: data
+      PYTHONUNBUFFERED: "1"      # show each source's result live in the run log
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}

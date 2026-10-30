@@ -15,6 +15,24 @@ PAUSE = float(os.environ.get("GEMINI_PAUSE", "7"))
 _client = None
 _models = None
 _dead = set()
+# Time budget for ALL AI calls in one run. Free-tier rate limits answer with "wait and retry"; without a budget,
+# 15 gig notes x several models x growing back-off could keep a scheduled run busy for half an hour.
+BUDGET = float(os.environ.get("AI_BUDGET_SECONDS", "300"))
+_started = None
+
+
+def _over_budget():
+    global _started
+    if _started is None:
+        _started = time.time()
+    return time.time() - _started > BUDGET
+
+
+def _nap(secs):
+    """Sleep, but never past the run's AI budget."""
+    if _started is not None:
+        secs = max(0, min(secs, BUDGET - (time.time() - _started)))
+    time.sleep(secs)
 
 
 def parse_json(text):
@@ -62,6 +80,8 @@ def _ask_gemini(prompt, temperature):
         if model in _dead:
             continue
         for attempt in range(3):
+            if _over_budget():
+                return None
             try:
                 cfg = {"temperature": temperature}
                 if "gemma" not in model:
@@ -78,12 +98,12 @@ def _ask_gemini(prompt, temperature):
                     if "PerDay" in msg or "per day" in msg.lower():
                         _dead.add(model)
                         break
-                    time.sleep(30 * (attempt + 1))
+                    _nap(30 * (attempt + 1))
                 elif "404" in msg or "NOT_FOUND" in msg:
                     _dead.add(model)
                     break
                 elif any(c in msg for c in ("500", "503", "UNAVAILABLE", "INTERNAL", "DEADLINE")):
-                    time.sleep(10 * (attempt + 1))
+                    _nap(10 * (attempt + 1))
                 else:
                     print("  gemini:", msg[:160])
                     break
@@ -98,6 +118,8 @@ def _ask_groq(prompt, temperature):
         if "groq:" + model in _dead:
             continue
         for attempt in range(3):
+            if _over_budget():
+                return None
             try:
                 r = requests.post("https://api.groq.com/openai/v1/chat/completions", timeout=90,
                                   headers={"Authorization": f"Bearer {GROQ_KEY}"},
@@ -117,7 +139,7 @@ def _ask_groq(prompt, temperature):
                 if any(k in r.text for k in ("per day", "RPD", "TPD")):
                     _dead.add("groq:" + model)
                     break
-                time.sleep(20 * (attempt + 1))
+                _nap(20 * (attempt + 1))
             else:
                 if r.status_code == 404:
                     _dead.add("groq:" + model)
@@ -131,5 +153,7 @@ def ask_json(prompt, temperature=0.3):
 
 
 def exhausted():
+    if _started is not None and _over_budget():
+        return True
     gm = _gemini_models()
     return all(m in _dead for m in gm) and (not GROQ_KEY or all("groq:" + m in _dead for m in GROQ_MODELS))
