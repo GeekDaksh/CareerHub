@@ -31,13 +31,13 @@ def card(name, flags, meaning):
     return {"metric": name, "value": round(v, 3), "n": len(flags), "ci95": boot(flags), "meaning": meaning}
 
 
-def run(show_errors=False, final=False):
+def run(show_errors=False, final=False, opts=None, quiet=False):
     if final and show_errors:
         raise SystemExit("no error listing on the test set")
     gold = load_gold("test" if final else "gold")
     fam, lev, mlflag, nontech, fresh_found, fresh_prec, errs = [], [], [], [], [], [], []
     for g in gold:
-        c = classify(g)
+        c = classify(g, opts)
         fam.append(c["family"] == g["gold_family"])
         lev.append(c["level"] == g["gold_level"])
         mlflag.append((c["family"] in TECH_FAMILIES_ML) == (g["gold_family"] in TECH_FAMILIES_ML))
@@ -54,7 +54,7 @@ def run(show_errors=False, final=False):
              card("nontech_accuracy", nontech, "'non-technical' yes/no is right"),
              card("fresher_recall", fresh_found, "fresher jobs (intern/new grad) the app marks as fresher"),
              card("fresher_precision", fresh_prec, "jobs the app marks fresher that really are")]
-    for c in cards:
+    for c in ([] if quiet else cards):
         print(f"{c['metric']:18s} {c['value']:.3f}  n={c['n']:3d}  95% {c['ci95']}  — {c['meaning']}")
     if show_errors:
         for e in errs:

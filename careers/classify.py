@@ -10,6 +10,29 @@ import re
 
 from common import levels
 
+# Improvement-loop switches (eval/careers/loop.py turns them on one at a time and keeps only those that pass the
+# declared accept rule in eval/careers/OBJECTIVE.md). The values here are the accepted ones.
+OPTS = {"title_underscores": True, "desc_fallback_tech_only": True, "nontech_ext": True, "other_tech": True,
+        "hardware_ext": True, "swe_ext": True, "research_titles": True, "genai_ext": True,
+        "manager_not_level": True, "mts_levels": False, "student_titles": True, "year_ranges": True}
+
+NON_TECH_EXT = (r"strategist|sourcer|government affairs|public policy|total rewards|accounting|technical writer|"
+                r"writer|vendor|growth|collections|enablement|mobility|social experience|costing|fp&a|planner|"
+                r"category manager|people consultant|people partner|employee success|buyer|commission|cluster head|"
+                r"last mile|physical security|account management|quality analyst|supply chain planning|"
+                r"business planning|\bgtm\b|go-to-market|strategy|payroll|hr shared|sales operations|marketing science")
+OTHER_TECH = (r"\b(solutions? architect\w*|solutions? engineer|sales engineer|pre-?sales|professional services|"
+              r"consultant|\bsap\b|functional sme|network engineer|collaboration engineer|mechanical|civil|"
+              r"manufacturing engineer|industrial engineer\w*|it operations?|service desk|security analyst|soc analyst|"
+              r"compliance lead|information security|deployment strategist|technical solutions|application engineer|"
+              r"cloud solution architect|architect infra)\b")
+HW_EXT = (r"\b(design engineer|dft|logic design|physical design|design evaluation|formal verification|"
+          r"process control|product engineer\w*|\bpe\b|electrical|ecu|autosar|diagnostic|quality (?:assurance )?engineer|"
+          r"reliability engineer|rda|layout|test process|soc architect|asic|hw developer)\b")
+SWE_EXT = r"\b(architect|programming|technical manager|salesforce engineer|backend engineer|kernel|build)\b"
+RESEARCH_TITLES = r"\b(researcher|research scientist|student researcher|post-?doc\w*|research intern|research phd)\b"
+GENAI_EXT = r"\b(voice|agent engineer|agentic systems?|agents)\b"
+
 # ---------------------------------------------------------------- role families (checked in this order)
 NON_TECH = (r"account executive|account manager|account development|sales|business development|\bbdr\b|\bsdr\b|"
             r"marketing|brand|communications|public relations|recruit|talent|human resources|\bhr\b|people partner|"
@@ -70,18 +93,36 @@ ML_TERMS = re.compile(r"\b(machine learning|deep learning|pytorch|tensorflow|mod
                       r"computer vision|nlp|scikit-learn|ml models?)\b", re.I)
 
 
-def _family(title, desc):
+def _family(title, desc, o=None):
+    o = OPTS if o is None else o
     t = title.lower()
-    if re.search(NON_TECH, t) and not re.search(r"\b(engineer|scientist|developer|research)\b", t):
+    if o["title_underscores"]:
+        t = re.sub(r"[_/]+", " ", t)
+    nontech = NON_TECH + ("|" + NON_TECH_EXT if o["nontech_ext"] else "")
+    if re.search(nontech, t) and not re.search(r"\b(engineer|scientist|developer|research)\b", t):
         return "Non-technical", "high", "title"
+    if o["research_titles"] and re.search(RESEARCH_TITLES, t):
+        return "AI Research", "high", "title"
+    if o["genai_ext"] and re.search(GENAI_EXT, t):
+        return "GenAI / LLM", "high", "title"
+    if o["other_tech"] and re.search(OTHER_TECH, t):
+        return "Other", "high", "title (solutions / consulting / IT / other engineering)"
+    if o["hardware_ext"] and re.search(HW_EXT, t) and not re.search(r"\b(software|machine learning|ml|ai)\b", t):
+        return "Embedded / Hardware", "high", "title"
     for fam, pat, _ in FAMILIES:
         if re.search(pat, t, re.I):
             # 'scientist' alone means AI Research only when nothing more specific matched before it
             return fam, "high", "title"
-    if re.search(NON_TECH, t):
+    if o["swe_ext"] and re.search(SWE_EXT, t):
+        return "Software Engineering", "high", "title"
+    if re.search(nontech, t):
         return "Non-technical", "medium", "title"
+    if o["desc_fallback_tech_only"] and not re.search(r"\b(engineer|developer|scientist|architect|analyst)\b", t):
+        return "Other", "low", "none"
     d = desc.lower()[:4000]
     for fam, pat, _ in FAMILIES[:6]:      # generic title: let a strongly ML description decide
+        if o["desc_fallback_tech_only"]:
+            pat = pat.replace("|ml|ai|", "|").replace("|ai/ml|ml/ai", "")
         if len(re.findall(pat, d)) >= 3:
             return fam, "medium", "description"
     return "Other", "low", "none"
@@ -107,9 +148,28 @@ SENIOR = re.compile(r"\b(senior|sr\.?|staff|principal|lead|manager|director|head
                     r"iv|4|5)\b", re.I)
 
 
-def level(title, desc, kind_hint=""):
+NOT_LEVEL_MANAGER = re.compile(r"\b(product|program|project|account|customer success|technical program|partner|"
+                               r"collections|category|deputy|assistant|asst\.?)\s+manager\b|\bmanager\s+(ii|2|i|1)\b", re.I)
+STUDENT = re.compile(r"\b(student researcher|student)\b", re.I)
+POSTDOC = re.compile(r"\bpost-?doc\w*\b|\bpost-doctoral\b", re.I)
+SENIOR_MTS = re.compile(r"\b(smts|lmts|pmts|dmts)\b", re.I)
+RANGE_YEARS = re.compile(r"\b(\d{1,2})\s*(?:[-–]|to)\s*\d{1,2}\s*\+?\s*(?:years?|yrs?)\b", re.I)
+
+
+def level(title, desc, kind_hint="", o=None):
     """→ (label, confidence, evidence). Labels: Intern · New grad / entry · Early career (1–3 yrs) · Mid · Senior+."""
+    o = OPTS if o is None else o
     t = title or ""
+    if o["title_underscores"]:
+        t = re.sub(r"[_/]+", " ", t)
+    if o["student_titles"] and STUDENT.search(t):
+        return "Intern", "high", "title says student"
+    if o["student_titles"] and POSTDOC.search(t):
+        return "New grad / entry", "high", "post-doctoral role (right after a PhD)"
+    if o["mts_levels"] and SENIOR_MTS.search(t) and not re.search(r"\bmts\b", t, re.I):
+        return "Senior+", "high", f"title level '{SENIOR_MTS.search(t).group(0)}'"
+    if o["manager_not_level"]:
+        t = NOT_LEVEL_MANAGER.sub(lambda m: m.group(0).replace("anager", "anagr"), t)   # 'Product Manager' is a job, not a level
     if INTERN.search(t) or kind_hint == "internship":
         return "Intern", "high", "title says intern" if INTERN.search(t) else "the site marks it as an internship"
     if kind_hint == "graduate":
@@ -118,7 +178,12 @@ def level(title, desc, kind_hint=""):
         return "Senior+", "high", f"title says '{SENIOR.search(t).group(0)}'"
     if NEW_GRAD.search(t):
         return "New grad / entry", "high", f"title says '{NEW_GRAD.search(t).group(0)}'"
-    yrs = levels.min_years(desc) if hasattr(levels, "min_years") else None
+    yrs = levels.min_years(desc)
+    if o["year_ranges"]:
+        r = [int(m.group(1)) for m in RANGE_YEARS.finditer(str(desc or "")[:6000])]
+        r = [y for y in r if y < 30]
+        if r:
+            yrs = min(r + ([yrs] if yrs is not None else []))
     if yrs is not None:
         if yrs <= 1:
             return "New grad / entry", "medium", f"description asks for {yrs}+ years"
@@ -163,13 +228,14 @@ def work_mode(location, desc):
     return "Not stated"
 
 
-def classify(job):
+def classify(job, o=None):
+    o = OPTS if o is None else o
     title, desc = str(job.get("title") or ""), str(job.get("desc") or "")
-    fam, fam_conf, fam_ev = _family(title, desc)
+    fam, fam_conf, fam_ev = _family(title, desc, o)
     spec = specialties(title, desc)
     if fam == "Software Engineering" and len(ML_TERMS.findall(desc)) >= 4:
         spec = ["ML-heavy"] + spec
-    lv, lv_conf, lv_ev = level(title, desc, job.get("kind_hint") or "")
+    lv, lv_conf, lv_ev = level(title, desc, job.get("kind_hint") or "", o)
     return {"family": fam, "family_conf": fam_conf, "family_evidence": fam_ev, "specialties": spec,
             "is_ml": fam in TECH_FAMILIES_ML or "ML-heavy" in spec,
             "level": lv, "level_conf": lv_conf, "level_evidence": lv_ev, "fresher_fit": FRESHER_FIT[lv],
