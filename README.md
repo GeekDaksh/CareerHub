@@ -4,6 +4,7 @@ One private web app with two separate sides, **Career** and **Freelance**. It ru
 
 | Side | What you get | Refreshed |
 |---|---|---|
+| **Big companies** (Career side, first tab) | Vacancies read straight from **30 companies' own careers sites** — Google, Amazon, Microsoft (FAANG+), then NVIDIA, Salesforce, Adobe, Intel, Micron, HP, Applied Materials, Analog Devices, Cadence, Workday, Bosch, ServiceNow, Databricks, Rubrik, Airbnb, Zscaler, GitLab, Elastic, MongoDB, Datadog…, then Freshworks, Meesho, CRED, Sarvam AI. Apple, Meta, Netflix, Qualcomm, Dell, Atlassian, Flipkart and others forbid automated reading, so they get official search links instead. Each job gets: **role family** (GenAI / CV / ML / research / data / software / hardware…), **level and fresher fit**, a **"how sure it's real" %** with every check shown, your **match % per resume**, **which resume to send**, and **what to put in it** (only skills you really have, quoting your own resume lines). Compact rows; click **Details** for the full picture. | 4× a day (companies rotate) |
 | **Career** | Fresher / entry-level jobs from your target companies' careers pages, your **LinkedIn, Naukri, Internshala, Wellfound, Indeed…** job-alert emails, remote boards, the monthly HN "Who is hiring?" thread (remote, open to India), the job boards of remote-first global companies (GitLab, Canonical, Elastic, MongoDB, Datadog, Supabase, Zapier; edit `REMOTE_COMPANIES` in `config.py`) and public job pages. An **International only** filter shows jobs at companies abroad. Every job has a scam check, a "how to apply" guide, resume keywords and a referral contact. Plus an applications board, a company outreach list (graded work emails) and one-click filtered searches on every job site. | 4× a day (companies Mon + Thu) |
 | **Freelance** | Paid gigs (Freelancer.com, remote boards incl. Working Nomads, the HN freelancer thread). Gigs with a stated $/€/£ budget show the amount and a **Pays in USD** tag, with a filter with scams, non-India and low-pay removed, proposal drafts, AI-task platforms, a pipeline board, an earnings log against your goal, and a toolkit. | 4× a day |
 | **Morning email** | 3 jobs to apply to, the best new gigs, 2 startups to email, 1 AI platform | daily ~08:15 IST |
@@ -66,6 +67,26 @@ The two filters were tested on **EMSCAD**, a public set of 17,880 real job ads (
 | Entry jobs wrongly hidden | 16.0 % | 16.0 % | no change |
 
 **Honest catch:** EMSCAD repeats scam campaigns. Counting only test scams whose campaign never appears in train, the text rules catch **4.9 %**. The rules are a last line of defence. Most of the safety comes from *where* a post comes from: official careers pages, DKIM-checked alert emails, known platforms, and your own reports. Full details are in [`REPORT.md`](REPORT.md) and [`eval/REDTEAM.md`](eval/REDTEAM.md).
+
+## Big companies: how good is the sorting? (measured)
+
+260 real jobs from the 30 careers sites were labelled by hand **before** tuning (`eval/careers/`), and 100 more were
+kept apart as a blind test. The classifier is plain rules you can read (`careers/classify.py`), tuned in a logged loop
+(`eval/careers/LOOP.md`): 21 tries, 11 kept, 10 rejected by the declared rule.
+
+| On the blind test (n=100) | Before | Final | 95 % range (final) |
+|---|---|---|---|
+| Role family right | 61 % | **93 %** | 88–98 % |
+| Level right | 93 % | **94 %** | 89–98 % |
+| "Is this an ML/AI role?" right | 92 % | **98 %** | 95–100 % |
+| "Non-technical?" right | 88 % | **96 %** | 92–99 % |
+
+- **Honest catches.**
+  - Big-company sites list very few fresher jobs (about 4.5 % fit a fresher, 9 % counting 1–3-year stretch roles), so the fresher numbers rest on very few cases (n=2 in test). Don't trust them yet.
+  - The test set was scored 3 times: the first final run, the untuned baseline for comparison, and a final run after adding training data. All are logged in `eval/careers/test_runs.log`.
+  - Team names can fool it: "Prime Video" made about 7 of 2,002 jobs look like computer vision. The fix didn't pass the accept rule, so it stays off.
+- **"How sure it's real".** This is a rule score, not a measured probability. A job that comes from the company's own careers system, at that company's own web address, gets 95–99 %. A look-alike address or scam words drop it below 55 %, and then it's hidden.
+- **Resume match.** It is the share of the job's skills that your resume shows: title ×3, required ×2, other ×1. If the post names fewer than 3 skills, no % is shown. No AI writes the advice, so text inside a job post can't steer it. Resumes are kept as text only, in your private data store.
 
 ## For developers
 

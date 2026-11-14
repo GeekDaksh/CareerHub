@@ -119,5 +119,30 @@ Daksh has four buttons: **Report scam**, **Not a scam**, **It's senior** and **I
 - Entry loss is about 16 % on test. **Next:** treat "Team Lead" and "Manager" with the description's years, as a new loop candidate measured on train.
 - The repo isn't connected to GitHub yet, so nothing is live. Daksh needs to grant access (README step 4 onward).
 
+## 9b. Big companies (added 2026-11-14)
+- **Sources.** 8 connectors read companies' own careers systems: amazon.jobs JSON, Google's careers page data, Microsoft's Eightfold search, Workday (11 tenants), and Greenhouse, Lever, Ashby and SmartRecruiters. All 30 were verified from GitHub's servers by `careers/probe.py`. Sites that disallow robots or need a login (Apple, Meta, Netflix…) get links only.
+- **Gold sets.** These are frozen and hash-locked:
+  - train: 200 random + 60 FAANG+ + 6 audit hard cases
+  - test: 100 random, labelled blind
+  - The first freeze cut descriptions at 3,000 characters, which a gate-like check caught. It was fixed in its own commit before any tuning.
+- **Loop.** 4 runs, all archived:
+  - Run 1 was on 200 jobs.
+  - Run 2 added the dry-run ideas.
+  - Run 3 had train +60 FAANG+, after the dry run showed Amazon was under-covered.
+  - Run 4 added a retry pass and the audit hard cases.
+  - Test results: family 0.61 → 0.93, level 0.93 → 0.94, ML flag 0.92 → 0.98, non-tech 0.88 → 0.96. Test was scored 3 times (one was the baseline comparison), all logged.
+- **Rejected on purpose.**
+  - `cv_strict`: it fixes the Prime Video cases but gained only 0.8 points on train.
+  - `student_titles` and `genai_ext`: they also fell just under the 1-point bar.
+  - These are limits to revisit when more labelled data exists.
+- **Legit score.** Its main parts:
+  - source and official-host checks
+  - text scam signs
+  - last-seen
+  - Jobs under 55 % are hidden, and the gate refuses to save if any such job would be shown.
+- **Resume match.** It is rule-based and grounded:
+  - Tests prove that the advice names only skills in the job, quotes only real resume lines, and ignores instructions planted in a job post.
+- **Not measured yet.** Match % has no human-judged benchmark, because there are no real resumes yet. **Next:** once Daksh uploads resumes, label 50 job–resume pairs as good, okay or poor fit, and calibrate.
+
 ## 10. AI tool use
 Claude drafted all code, tests and documents. Every number in this report comes from a script in `eval/` and was re-run before writing. The bugs found by gates, the loop and the red team were fixed in separate commits, each with its reason.

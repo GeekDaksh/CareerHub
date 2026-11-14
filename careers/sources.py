@@ -53,8 +53,18 @@ def post_json(url, body, headers=None, timeout=30):
     return json.loads(bytes(buf).decode("utf-8", "replace"))
 
 
+def clean_title(t):
+    """'Manager I, ML Data Ops , Manager I, ML Data Ops' → once (some sites repeat the title)."""
+    parts = [x.strip() for x in str(t or "").split(",")]
+    out = []
+    for x in parts:
+        if x and x.lower() not in [o.lower() for o in out]:
+            out.append(x)
+    return ", ".join(out)
+
+
 def _job(company, jid, title, url, loc, posted, desc="", kind="", ats="", extra=None):
-    j = {"id": f"off:{company.lower().replace(' ', '')}:{jid}", "company": company, "title": strip_html(title, 200),
+    j = {"id": f"off:{company.lower().replace(' ', '')}:{jid}", "company": company, "title": clean_title(strip_html(title, 200)),
          "url": url, "location": strip_html(loc, 200), "posted": to_epoch(posted), "desc": strip_html(desc, 6000),
          "kind_hint": kind, "official": True, "ats": ats}
     j.update(extra or {})

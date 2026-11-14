@@ -217,7 +217,10 @@ def secrets_and_private_data_are_never_committed():
     files = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True).stdout.split()
     tok = re.compile(r"hf_[A-Za-z0-9]{30,}|AIza[0-9A-Za-z_\-]{30,}|gsk_[A-Za-z0-9]{30,}|ghp_[A-Za-z0-9]{30,}|"
                      r"tvly-[A-Za-z0-9]{20,}|\b[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}\b(?=.*(app|password))")
+    public_text = ("eval/careers/",)   # frozen public job posts: ordinary words can look like a 16-letter app password
     leaks = [f for f in files if os.path.isfile(os.path.join(ROOT, f)) and not f.endswith((".xlsx", ".png"))
+             and not (f.startswith(public_text) and f.endswith(".jsonl") and not re.search(r"hf_|AIza|gsk_|ghp_|tvly-",
+                      open(os.path.join(ROOT, f), encoding="utf-8", errors="ignore").read()))
              and tok.search(open(os.path.join(ROOT, f), encoding="utf-8", errors="ignore").read())]
     chk(not leaks, f"no token-looking strings in committed files {leaks[:5]}")
     chk(not any(f.startswith("data/") for f in files), "no personal data folder committed")

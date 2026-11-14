@@ -21,6 +21,8 @@ from common import apply as AP
 from common import feedback as FB
 from common import settings as SETTINGS
 from common import trust
+from careers import match as MATCH
+from careers import resumes as RES
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
 DATA_REPO = os.environ.get("DATA_REPO")
@@ -43,7 +45,10 @@ LOCK = threading.Lock()
 _cache = {"at": 0, "data": None}
 
 app = FastAPI(docs_url=None, redoc_url=None)
-MAX_BODY = 64 * 1024           # no request needs more than this
+from starlette.middleware.gzip import GZipMiddleware   # noqa: E402
+app.add_middleware(GZipMiddleware, minimum_size=2048)
+MAX_BODY = 64 * 1024           # no request needs more than this …
+BODY_LIMITS = {"/api/resume": 4_500_000}   # … except a resume upload (3 MB file, base64-encoded)
 MAX_TRACKED = 5000             # tracker items
 FRESH_EVERY = 60               # a forced reload rebuilds the data at most once a minute
 
@@ -163,15 +168,16 @@ async def guard(request: Request, call_next):
         origin = request.headers.get("origin")
         if origin and urlparse(origin).netloc != request.headers.get("host", ""):
             return JSONResponse({"detail": "cross-site request"}, status_code=403)
+        limit = BODY_LIMITS.get(request.url.path, MAX_BODY)
         try:
-            if int(request.headers.get("content-length") or 0) > MAX_BODY:
+            if int(request.headers.get("content-length") or 0) > limit:
                 return JSONResponse({"detail": "request too large"}, status_code=413)
         except ValueError:
             return JSONResponse({"detail": "bad length"}, status_code=400)
         body = b""
         async for chunk in request.stream():
             body += chunk
-            if len(body) > MAX_BODY:
+            if len(body) > limit:
                 return JSONResponse({"detail": "request too large"}, status_code=413)
         request._body = body
     return await call_next(request)
@@ -236,8 +242,38 @@ GIG_FIELDS = ["id", "source", "title", "url", "company", "posted", "first_seen",
               "level", "project_match", "intl", "pay_text", "pays_foreign"]
 
 
+CAREERS = {"jobs": {}, "doc": {}}          # full official jobs (with descriptions) for the Details view
+ROW_FIELDS = ["id", "company", "company_tier", "company_rank", "title", "location", "posted", "first_seen", "last_seen",
+              "url", "family", "family_conf", "specialties", "is_ml", "level", "level_conf", "fresher_fit", "employment",
+              "work_mode", "hard"]
+
+
+def resumes_doc():
+    return jread("resumes/resumes.json", {"resumes": []})
+
+
+def careers_view(resumes):
+    doc = jread("careers/official.json", {})
+    jobs = [j for j in doc.get("jobs", []) if j.get("visible") and j.get("family") != "Non-technical"]
+    CAREERS["jobs"] = {j["id"]: j for j in jobs}
+    CAREERS["doc"] = doc
+    have = [(r["name"], MATCH.skills_in(r.get("text", ""), implied=True)) for r in resumes]
+    rows = []
+    for j in jobs:
+        row = {k: j.get(k) for k in ROW_FIELDS}
+        row["legit"] = {"pct": j["legit"]["pct"], "band": j["legit"]["band"], "open": j["legit"].get("still_open")}
+        row["match"], row["best"] = MATCH.best_for(j.get("skills") or [], have) if have else (None, None)
+        row["n_skills"] = len(j.get("skills") or [])
+        rows.append(row)
+    hidden_nt = sum(1 for j in doc.get("jobs", []) if j.get("family") == "Non-technical")
+    return {"rows": rows, "updated": doc.get("updated"), "links": doc.get("links", []), "health": doc.get("health", {}),
+            "nontech_hidden": hidden_nt}
+
+
 def build():
     s = SETTINGS.load_from(jread("settings/settings.json", None))
+    rdoc = resumes_doc()
+    resumes = rdoc.get("resumes", [])
     gigs_all = jread("gigs/gigs.json", {}).get("gigs", [])
     gigs = [{k: g.get(k) for k in GIG_FIELDS} | {"desc": (g.get("desc") or "")[:400]} for g in gigs_all if g.get("visible")]
     gig_blocked = [{"title": g["title"], "url": g["url"], "platform": g["source"], "why": g.get("scam")}
@@ -292,6 +328,10 @@ def build():
                    "files": dict(READ_ERRORS)},
         "tracker": jread("tracker/tracker.json", {"items": {}, "earnings": []}),
         "lessons": lessons_view(),
+        "careers": careers_view(resumes),
+        "resumes": [{"name": r["name"], "filename": r.get("filename"), "uploaded": r.get("uploaded"),
+                     "chars": len(r.get("text", "")), "skills": sorted(MATCH.skills_in(r.get("text", ""), implied=True))}
+                    for r in resumes],
         "github": GITHUB_REPO,
     }
 
@@ -458,6 +498,51 @@ def export():
         raise HTTPException(404, "not ready yet")
     return Response(b, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": "attachment; filename=career_hub_companies.xlsx"})
+
+
+@app.get("/api/job")
+def job_detail(id: str):
+    payload()
+    j = CAREERS["jobs"].get(str(id)[:200])
+    if not j:
+        raise HTTPException(404, "job not found (it may have closed)")
+    resumes = resumes_doc().get("resumes", [])
+    adv = MATCH.advise(j, resumes)
+    out = {k: j.get(k) for k in ROW_FIELDS + ["family_evidence", "level_evidence", "desc", "ats"]}
+    return {**out, "legit": j["legit"], "advice": adv}
+
+
+def _save_resumes(lst, msg):
+    write_bytes("resumes/resumes.json", json.dumps({"resumes": lst}, ensure_ascii=False).encode(), msg)
+    with LOCK:
+        _cache["at"] = 0          # rebuild on next load
+
+
+@app.post("/api/resume")
+async def resume_upload(req: Request):
+    b = await req.json()
+    try:
+        name = RES.clean_name(b.get("name"))
+        text = RES.read(b.get("filename"), b.get("data"))
+    except RES.Bad as e:
+        raise HTTPException(400, str(e))
+    lst = [r for r in resumes_doc().get("resumes", []) if r["name"] != name]
+    if len(lst) >= RES.MAX_RESUMES:
+        raise HTTPException(400, f"up to {RES.MAX_RESUMES} resumes — delete one first")
+    lst.append({"name": name, "filename": str(b.get("filename") or "")[:80], "uploaded": time.time(), "text": text})
+    _save_resumes(lst, "resume uploaded")
+    return {"ok": True, "name": name, "chars": len(text), "skills": sorted(MATCH.skills_in(text, implied=True))}
+
+
+@app.post("/api/resume/delete")
+async def resume_delete(req: Request):
+    b = await req.json()
+    name = str(b.get("name") or "")
+    lst = resumes_doc().get("resumes", [])
+    if not any(r["name"] == name for r in lst):
+        raise HTTPException(404, "no resume with that name")
+    _save_resumes([r for r in lst if r["name"] != name], "resume deleted")
+    return {"ok": True}
 
 
 @app.get("/healthz")

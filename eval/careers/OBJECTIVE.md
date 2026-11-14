@@ -20,3 +20,8 @@ jobs but 6% of train). Added `gold2.jsonl`: 60 more FAANG+ jobs (seed 31415), la
 years are read from the *required* qualifications (the more correct reading). Train is now gold + gold2 (n=260).
 Objective, guardrails and accept rule unchanged. The old loop log is archived; the loop is re-run from scratch.
 The test set is unchanged; its next run will be logged as the second final run.
+
+## Amendment 2 (2026-11-14, before loop run 4)
+`gold3_hard.jsonl`: 6 jobs found by looking at the app (every 'Prime Video' job outside train/test was called
+Computer Vision because of the team name). They were picked BECAUSE they were wrong, so they are not a random
+sample — they only steer tuning; all reported accuracy claims come from the untouched test set. Train n=266.

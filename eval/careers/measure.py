@@ -34,7 +34,7 @@ def card(name, flags, meaning):
 def run(show_errors=False, final=False, opts=None, quiet=False):
     if final and show_errors:
         raise SystemExit("no error listing on the test set")
-    gold = load_gold("test") if final else load_gold("gold") + load_gold("gold2")
+    gold = load_gold("test") if final else load_gold("gold") + load_gold("gold2") + load_gold("gold3_hard")
     fam, lev, mlflag, nontech, fresh_found, fresh_prec, errs = [], [], [], [], [], [], []
     for g in gold:
         c = classify(g, opts)

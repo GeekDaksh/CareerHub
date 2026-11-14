@@ -6,10 +6,13 @@ writes anything (so text inside a job post can't steer the advice).
 
 Match % (per resume) = weighted share of the job's skills that the resume shows.
    weight 3 = skill in the job title, 2 = in the required / basic / minimum qualifications, 1 = anywhere else
-   (preferred qualifications, responsibilities). Fewer than 3 skills found in the job → confidence "low".
+   (preferred qualifications, responsibilities). Fewer than 3 skills found in the job → no % at all (the post says too little to judge; a "100%" from
+   one skill would mislead).
 Hard requirements (years, PhD, degree) are shown separately — a resume can't fix those.
 """
 import re
+
+MIN_SKILLS = 3          # a job must name at least this many skills before a match % is shown
 
 # canonical skill → regex (whole words, case-insensitive). Kept broad but explicit, so every match is explainable.
 SKILLS = {
@@ -175,7 +178,7 @@ def match_one(job, resume, js=None):
     got = [f for f in js if f["skill"] in have]
     pct = round(100 * sum(f["weight"] for f in got) / total)
     conf = "low" if len(js) < 3 else "medium" if len(js) < 6 else "high"
-    return {"resume": resume["name"], "pct": pct if js else None, "confidence": conf,
+    return {"resume": resume["name"], "pct": pct if len(js) >= MIN_SKILLS else None, "confidence": conf,
             "matched": [f["skill"] for f in got], "missing": [f["skill"] for f in js if f["skill"] not in have],
             "n_job_skills": len(js)}
 
@@ -213,10 +216,29 @@ def advise(job, resumes):
         points.append({"kind": "gap", "text": "Asked for but not in any of your resumes — add ONLY if you have really "
                        "used it (a project or course line): " + ", ".join(req_gaps[:6]),
                        "evidence": [{"skill": s, "job_says": w[s]["evidence"], "where": w[s]["where"]} for s in req_gaps[:6]]})
-    words = sorted({w[s]["evidence"] for s in best["matched"] if w[s]["evidence"].lower() != s.lower()})[:6]
+    words = sorted({w[s]["evidence"] for s in best["matched"]
+                    if w[s]["where"] != "role" and w[s]["evidence"].lower() != s.lower()})[:6]
     if words:
         points.append({"kind": "wording", "text": "Use the job's own words so screening software finds them: " +
                        ", ".join(f"“{x}”" for x in words), "evidence": []})
     hard = hard_requirements(job)
     return {"resumes": res, "best": best["resume"], "points": points, "hard": hard, "job_skills": js,
             "note": "Match % = share of the job's skills your resume shows (title ×3, required ×2, other ×1)."}
+
+
+def quick(js, have):
+    """Fast match % from precomputed job skills (js) and a resume's skill dict (have)."""
+    total = sum(f["weight"] for f in js)
+    if not total or len(js) < MIN_SKILLS:
+        return None
+    return round(100 * sum(f["weight"] for f in js if f["skill"] in have) / total)
+
+
+def best_for(js, resumes_have):
+    """→ (best %, best resume name) over [(name, have)]."""
+    best = (None, None)
+    for name, have in resumes_have:
+        p = quick(js, have)
+        if p is not None and (best[0] is None or p > best[0]):
+            best = (p, name)
+    return best

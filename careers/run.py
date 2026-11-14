@@ -10,7 +10,7 @@ import json
 import os
 import time
 
-from careers import classify as K, legit, registry, sources as S
+from careers import classify as K, legit, match as M, registry, sources as S
 from common import gates
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
@@ -45,6 +45,8 @@ def order(companies, health):
 def enrich(j, company, now):
     c = K.classify(j)
     j.update(c)
+    j["skills"] = M.job_skills(j)            # what the job asks for (server compares it with your resumes)
+    j["hard"] = M.hard_requirements(j)
     j["legit"] = legit.official(j, company, j.get("last_seen"), now)
     j["visible"] = j["legit"]["pct"] >= 55
     if c["family"] == "Non-technical":
@@ -71,8 +73,11 @@ def run(now=None, budget=BUDGET, collect=S.collect):
         prev = health.get(name, {})
         health[name] = {**h, "ok_at": now if h.get("ok") else prev.get("ok_at", 0),
                         "last_count": h["count"] if h.get("ok") else prev.get("last_count", 0)}
-    new = 0
+    new, dropped = 0, 0
     for j in got:
+        if not str(j.get("url") or "").startswith("https://") or not legit.host(j.get("url")):
+            dropped += 1          # a job whose link isn't a normal https address is never stored or shown
+            continue
         o = jobs.get(j["id"])
         if o:
             if len(j.get("desc") or "") < len(o.get("desc") or ""):
@@ -103,6 +108,7 @@ def run(now=None, budget=BUDGET, collect=S.collect):
     fresh = sum(1 for j in kept if j["visible"] and j.get("fresher_fit") in ("fits", "stretch"))
     print(f"careers: {len(got)} fetched this run ({new} new) from {sum(1 for h in run_health.values() if h.get('ok'))} "
           f"companies · {len(kept)} stored · {vis} shown · {ml} ML/AI · {fresh} fresher-fit"
+          + (f" · {dropped} dropped (unsafe link)" if dropped else "")
           + ("" if ok else " · NOT SAVED (output check failed, last good list kept)"))
     for n, h in sorted(run_health.items()):
         print(f"  {n}: {'ok ' + str(h['count']) if h.get('ok') else 'FAILED ' + h.get('error', '')} {h.get('secs', '')}s")

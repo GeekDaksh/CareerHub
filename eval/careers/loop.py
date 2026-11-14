@@ -8,7 +8,7 @@ from eval.careers.measure import run, HERE
 
 ORDER = ["title_underscores", "desc_fallback_tech_only", "nontech_ext", "other_tech", "hardware_ext", "swe_ext",
          "research_titles", "genai_ext", "manager_not_level", "mts_levels", "student_titles", "year_ranges",
-         "title_level_first", "product_titles_first", "years_required_only"]
+         "title_level_first", "product_titles_first", "years_required_only", "cv_strict"]
 WHY = {"title_underscores": "titles like 'Linux kernel developer_BSH' hide words behind underscores",
        "desc_fallback_tech_only": "non-technical jobs became 'ML' because company boilerplate says 'AI' 3+ times",
        "nontech_ext": "strategist, sourcer, accounting, writer, growth... were missed as non-technical",
@@ -23,6 +23,7 @@ WHY = {"title_underscores": "titles like 'Linux kernel developer_BSH' hide words
        "year_ranges": "'2–5 years in DevOps' (no word 'experience') was missed",
        "title_level_first": "dry run: 'Data Scientist II' read as entry because the description's years were checked first",
        "product_titles_first": "dry run: 'Technical Program Manager, AI Products' called an ML role",
+       "cv_strict": "screenshot: 'Software Development Engineer ... Prime Video' called Computer Vision (team name)",
        "years_required_only": "dry run: 'preferred: 1+ years of X' made 'Data Scientist II' (requires 2+) look entry-level"}
 GUARD = ["level_accuracy", "ml_flag_accuracy", "nontech_accuracy"]
 

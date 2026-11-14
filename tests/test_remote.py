@@ -22,6 +22,8 @@ from gigs import sources as S  # noqa: E402
 
 FAILS = []
 NOW = time.time()
+# sample data is dated relative to NOW (fixed dates turned this test into a time bomb once they aged past 10 days)
+_d = lambda days, fmt="%Y-%m-%dT%H:%M:%SZ": time.strftime(fmt, time.gmtime(NOW - days * 86400))
 
 
 def chk(c, m):
@@ -32,18 +34,18 @@ def chk(c, m):
 
 GH = {"jobs": [
     {"id": 1, "title": "Machine Learning Engineer, Intern", "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/1",
-     "location": {"name": "Bangalore, India"}, "updated_at": "2026-10-28T10:00:00Z"},
+     "location": {"name": "Bangalore, India"}, "updated_at": _d(2)},
     {"id": 2, "title": "Backend Engineer", "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/2",
-     "location": {"name": "Remote, United States"}, "updated_at": "2026-10-28T10:00:00Z"},
+     "location": {"name": "Remote, United States"}, "updated_at": _d(2)},
     {"id": 3, "title": "Associate Support Engineer", "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/3",
-     "location": {"name": "Home Based - APAC"}, "updated_at": "2026-10-29T10:00:00Z"},
+     "location": {"name": "Home Based - APAC"}, "updated_at": _d(2)},
     {"id": 4, "title": "Junior Data Analyst", "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/4",
-     "location": {"name": "Remote Ireland; Remote, India; Remote, Mexico"}, "updated_at": "2026-10-29T10:00:00Z"},
+     "location": {"name": "Remote Ireland; Remote, India; Remote, Mexico"}, "updated_at": _d(2)},
     {"id": 5, "title": "", "absolute_url": "https://x/5", "location": {"name": "India"}},
 ]}
 ASHBY = {"jobs": [
     {"id": "a1", "title": "AI Platform Engineer", "jobUrl": "https://jobs.ashbyhq.com/supabase/a1", "location": "Remote, Global",
-     "publishedAt": "2026-10-27T00:00:00Z", "employmentType": "FullTime"},
+     "publishedAt": _d(2), "employmentType": "FullTime"},
     {"id": "a2", "title": "Support Engineer (AMER)", "jobUrl": "https://jobs.ashbyhq.com/supabase/a2", "location": "Remote, AMER",
      "secondaryLocations": [], "employmentType": "FullTime"},
     {"id": "a3", "title": "Contract Technical Writer", "jobUrl": "https://jobs.ashbyhq.com/supabase/a3", "location": "Remote, EMEA",
@@ -52,9 +54,9 @@ ASHBY = {"jobs": [
 WN = [
     {"url": "https://www.workingnomads.com/jobs/py-1", "title": "Python Automation Developer (Contract)", "description": "<p>Build scripts</p>",
      "company_name": "Lemon.io", "category_name": "Development", "tags": "python,automation", "location": "Worldwide",
-     "pub_date": "2026-10-29T08:00:00Z"},
+     "pub_date": _d(2)},
     {"url": "https://www.workingnomads.com/jobs/us-2", "title": "Data Engineer (Contract)", "description": "Must reside in the US.",
-     "company_name": "X", "category_name": "Development", "tags": "data", "location": "USA", "pub_date": "2026-10-29T08:00:00Z"},
+     "company_name": "X", "category_name": "Development", "tags": "data", "location": "USA", "pub_date": _d(2)},
     {"title": "no url"},
 ]
 HN_SEARCH = {"hits": [{"title": "Ask HN: Who is hiring? (October 2026)", "objectID": "900"},

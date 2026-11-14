@@ -1,5 +1,5 @@
 name: Gig + job radar
-# 4 times a day (08:15, 14:15, 20:15, 02:15 IST): freelance gigs AND entry-level jobs.
+# 4 times a day (08:15, 14:15, 20:15, 02:15 IST): freelance gigs, entry-level jobs, big companies' careers sites.
 # The 08:15 run also sends the morning email.
 on:
   schedule:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   radar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       DATA_DIR: data
       PYTHONUNBUFFERED: "1"      # show each source's result live in the run log
@@ -44,6 +44,9 @@ jobs:
       - name: Find entry-level jobs (alerts, careers pages, boards, job pages)
         run: python -m roles.radar
         continue-on-error: true
+      - name: Big companies' own careers sites (FAANG+ first)
+        run: python -m careers.run
+        continue-on-error: true
       - name: Morning email
         run: python -m notify.digest
         continue-on-error: true
@@ -53,3 +56,4 @@ jobs:
           python -m common.hfstore push gigs
           python -m common.hfstore push roles
           python -m common.hfstore push lessons
+          python -m common.hfstore push careers

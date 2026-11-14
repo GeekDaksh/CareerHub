@@ -155,6 +155,29 @@ dialog .sub{color:var(--dim);margin:6px 0 14px}
 .foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:44px;padding-top:16px;border-top:1px solid var(--line);color:var(--faint);font-size:13px}
 .loading{padding:80px 0;text-align:center;color:var(--dim)}
 
+
+/* Big companies: compact rows, details on click */
+.tier{margin:26px 0 8px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.tier h3{font-size:22px;font-stretch:125%;font-weight:400}
+.jlist{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--s1)}
+.jrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+.jrow:first-child{border-top:0}
+.jrow:hover{background:var(--s2)}
+.jrow .t{font-weight:500;line-height:1.35}
+.jrow .co{color:var(--dim);font-size:13px}
+.jrow .meta{margin-top:6px}
+.jrow .side{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill{display:inline-flex;flex-direction:column;align-items:center;min-width:58px;padding:4px 8px;border-radius:10px;border:1px solid var(--line2);font-size:11px;color:var(--dim);line-height:1.2}
+.pill b{font-size:15px;color:var(--paper);font-weight:600}
+.pill.pA b{color:var(--A)}.pill.pB b{color:var(--B)}.pill.pC b{color:var(--C)}.pill.pD b{color:var(--D)}
+.chk{display:grid;grid-template-columns:18px 1fr;gap:2px 8px;font-size:14px;margin:6px 0}
+.chk i{font-style:normal;font-weight:700}.chk .d{grid-column:2;color:var(--dim);font-size:13px}
+.desc{white-space:pre-wrap;color:var(--dim);font-size:13px;max-height:340px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+details summary{cursor:pointer;color:var(--dim);margin:10px 0}
+.mtable td,.mtable th{padding:8px 10px;font-size:13px}
+.mtable{min-width:0}
+q.rl{display:block;color:var(--paper);font-size:13px;margin:2px 0 0 0;quotes:"“" "”"}
+@media (max-width:900px){.jrow{grid-template-columns:1fr}.jrow .side{justify-content:flex-start}}
 @media (max-width:900px){
   .board,.board.b4,.grid2{grid-template-columns:1fr}
   .kpis{grid-template-columns:1fr 1fr}
@@ -188,7 +211,7 @@ dialog .sub{color:var(--dim);margin:6px 0 14px}
     </div>
   </header>
   <main id="view"><div class="loading">Loading your hub…</div></main>
-  <footer class="foot"><span id="upd"></span><span>Fresher / entry-level only · scams filtered · private to you</span></footer>
+  <footer class="foot"><span id="upd"></span><span>Fresher focus · official sources first · scams filtered · private to you</span></footer>
 </div>
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status"></div>
@@ -198,7 +221,7 @@ dialog .sub{color:var(--dim);margin:6px 0 14px}
 let D = null;
 const S = {ws: "career", tab: "today", f: {}};
 const TABS = {
-  career: [["today", "Today"], ["jobs", "Jobs"], ["apps", "Applications"], ["companies", "Companies"], ["sites", "Job sites"]],
+  career: [["today", "Today"], ["big", "Big companies"], ["jobs", "Startups & more"], ["resumes", "Resumes"], ["apps", "Applications"], ["companies", "Companies"], ["sites", "Job sites"]],
   freelance: [["today", "Today"], ["gigs", "Gigs"], ["ai", "AI tasks"], ["pipe", "Pipeline"], ["earn", "Earnings"], ["kit", "Toolkit"]],
 };
 const PAGES = ["settings", "safety", "status"];
@@ -405,8 +428,8 @@ function careerToday() {
   return `<section class="stage"><div class="orb"></div>
     <div class="eyebrow">Career · fresher & entry-level · ${esc(D.settings.main_sectors.join(" · "))}</div>
     <h1>Good ${hr < 12 ? "morning" : hr < 17 ? "afternoon" : "evening"},<br>${esc(D.profile.first_name)}.</h1>
-    <p class="lede">${new48} new roles match your sectors and roles. Apply to three today and ask one person for a referral. That's the whole job.</p>
-    <div class="row"><button class="primary" data-tab="jobs">See all jobs</button><button class="ghost" data-tab="apps">My applications</button></div></section>
+    <p class="lede">${bigFresh().length} fresher-fit ML / AI vacancies at FAANG+ and big tech right now, straight from their own careers sites. ${new48} new startup and board roles. Apply to three today and ask one person for a referral. That's the whole job.</p>
+    <div class="row"><button class="primary" data-tab="big">Big-company jobs</button><button class="ghost" data-tab="jobs">Startups & more</button><button class="ghost" data-tab="apps">My applications</button></div></section>
   <div class="kpis">
     <div class="kpi"><span class="k">New roles · 48 h</span><b>${new48}</b><p>${D.roles.length} open entry-level roles in total.</p></div>
     <div class="kpi"><span class="k">Applied this week</span><b>${countStatus("role:", ["applied", "interview", "offer"], weekAgo())}</b><p>Target: 10 a week.</p></div>
@@ -444,7 +467,7 @@ function careerJobs() {
     (!S.f.focus || r.focus) &&
     (!q || `${r.title} ${r.company} ${r.location}`.toLowerCase().includes(q)));
   if (S.f.sort === "new") list.sort((a, b) => (b.posted || b.first_seen) - (a.posted || a.first_seen));
-  return `<div class="page-head"><h2>Jobs</h2><p>Fresher and entry-level only. ${D.senior_hidden} senior roles hidden, ${D.blocked.length} risky posts blocked (see Safety). Sources: your target companies' careers pages, your job-alert emails (LinkedIn, Naukri, Internshala…), remote boards and public job pages.</p></div>
+  return `<div class="page-head"><h2>Startups & more</h2><p>Fresher and entry-level only. ${D.senior_hidden} senior roles hidden, ${D.blocked.length} risky posts blocked (see Safety). Sources: your target companies' careers pages, your job-alert emails (LinkedIn, Naukri, Internshala…), remote boards and public job pages.</p></div>
     <div class="filters">
       <div class="frow"><input class="search" id="q" placeholder="Search title, company, city…" value="${esc(S.f.q || "")}">
         <select class="sel" data-change="sortset"><option value="best">Best match</option><option value="new" ${S.f.sort === "new" ? "selected" : ""}>Newest</option></select>
@@ -689,8 +712,147 @@ function pageStatus() {
     <div class="row"><button class="ghost" data-act="refresh">Reload data</button><a class="ghost" href="/logout">Sign out</a>${D.github ? `<a class="ghost" href="https://github.com/${esc(D.github)}/actions" target="_blank" rel="noopener">Run logs ↗</a>` : ""}</div>`;
 }
 
+
+/* ---------- BIG COMPANIES (official careers sites) ---------- */
+const ROLE_GROUP = {"GenAI / LLM": "ML & AI", "Computer Vision": "ML & AI", "MLOps / ML Platform": "ML & AI", "AI Research": "ML & AI",
+  "ML Engineer / Applied Scientist": "ML & AI", "Data Science": "ML & AI", "Data Engineering": "Data", "Data Analytics": "Data",
+  "Software Engineering": "Software", "Robotics / Autonomy": "Hardware & robotics", "Embedded / Hardware": "Hardware & robotics",
+  "Bioinformatics / Comp. Bio": "ML & AI", "Product / Design": "Product", "Other": "Other tech"};
+const GROUPS = ["ML & AI", "Software", "Data", "Hardware & robotics", "Product", "Other tech"];
+const FITS = {fits: "Fits a fresher", stretch: "Stretch (1–3 yrs)", check: "Level not stated", "too senior": "Too senior"};
+const FIT_CLS = {fits: "bA", stretch: "bB", check: "bC", "too senior": "bD"};
+const TIERS = ["FAANG+", "Big tech", "India major"];
+const roleGroup = (j) => j.is_ml ? "ML & AI" : (ROLE_GROUP[j.family] || "Other tech");
+const bigRows = () => (D.careers && D.careers.rows) || [];
+const bigFresh = () => bigRows().filter((j) => j.is_ml && ["fits", "stretch"].includes(j.fresher_fit) && !["hidden"].includes(st("role:" + j.id)));
+const pctCls = (p) => p == null ? "" : p >= 70 ? "pA" : p >= 45 ? "pB" : p >= 25 ? "pC" : "pD";
+const city = (loc) => String(loc || "").split(/[;|]/)[0].replace(/,?\s*(India|IND|Karnataka|Maharashtra|Telangana|Tamil Nadu|Haryana|Uttar Pradesh)\b/gi, "").replace(/,\s*$/, "").trim() || "India";
+
+function groupDupes(list) {                        // same company + title in several cities → one row
+  const m = new Map();
+  for (const j of list) {
+    const k = j.company + "|" + j.title.toLowerCase();
+    if (!m.has(k)) m.set(k, {...j, cities: [city(j.location)], ids: [j.id]});
+    else { const g = m.get(k); g.ids.push(j.id); if (!g.cities.includes(city(j.location))) g.cities.push(city(j.location)); }
+  }
+  return [...m.values()];
+}
+function jobRow(j) {
+  const s = st("role:" + j.id);
+  return `<div class="jrow" data-act="job" data-id="${esc(j.id)}" role="button" tabindex="0">
+    <div><div class="co">${esc(j.company)}${s ? ` · <span class="tA">${esc(s)}</span>` : ""}</div>
+      <div class="t">${esc(j.title)}</div>
+      <div class="meta"><span class="tag ${FIT_CLS[j.fresher_fit]}">${esc(FITS[j.fresher_fit])}</span>
+        <span class="tag who">${esc(j.family)}</span>
+        ${(j.specialties || []).filter((x) => x.toLowerCase() !== j.family.toLowerCase()).slice(0, 2).map((x) => `<span class="tag">${esc(x)}</span>`).join("")}
+        <span class="tag">${esc(j.cities.slice(0, 2).join(", "))}${j.cities.length > 2 ? ` +${j.cities.length - 2}` : ""}</span>
+        ${j.posted ? `<span class="tag">${esc(ago(j.posted))}</span>` : ""}</div></div>
+    <div class="side">
+      <span class="pill ${pctCls(j.match)}" title="${j.match == null ? (D.resumes.length ? "The post names too few skills to judge" : "Upload resumes to see this") : "Best: " + esc(j.best)}"><b>${j.match == null ? "—" : j.match + "%"}</b>match</span>
+      <span class="pill ${j.legit.pct >= 95 ? "pA" : j.legit.pct >= 80 ? "pB" : "pC"}" title="How sure we are this job is real"><b>${j.legit.pct}%</b>real</span>
+      <button class="mini" data-act="job" data-id="${esc(j.id)}">Details</button></div></div>`;
+}
+function careerBig() {
+  const C = D.careers || {rows: []};
+  const fG = fsel("bgrp", ["ML & AI"]), fF = fsel("bfit", ["fits", "stretch", "check"].map((k) => FITS[k]));
+  const q = (S.f.bq || "").toLowerCase();
+  let list = bigRows().filter((j) => fG.includes(roleGroup(j)) && fF.includes(FITS[j.fresher_fit]) && st("role:" + j.id) !== "hidden" &&
+    (!q || `${j.title} ${j.company} ${j.location} ${j.family} ${(j.specialties || []).join(" ")}`.toLowerCase().includes(q)));
+  const sort = S.f.bsort || "match";
+  const fitRank = {fits: 0, stretch: 1, check: 2, "too senior": 3};
+  list.sort(sort === "new" ? (a, b) => (b.posted || b.first_seen) - (a.posted || a.first_seen)
+    : sort === "company" ? (a, b) => a.company_rank - b.company_rank || fitRank[a.fresher_fit] - fitRank[b.fresher_fit]
+    : (a, b) => ((b.match ?? -1) - (a.match ?? -1)) || fitRank[a.fresher_fit] - fitRank[b.fresher_fit] || a.company_rank - b.company_rank);
+  const rows = groupDupes(list);
+  const more = S.f.bmore || {};
+  const links = C.links || [];
+  const sections = TIERS.map((t) => {
+    const r = rows.filter((j) => j.company_tier === t);
+    const lk = links.filter((l) => l.tier === t);
+    const n = more[t] ? r.length : Math.min(r.length, 15);
+    return `<div class="tier"><h3>${esc(t)}</h3><span class="dim small">${r.length} roles · ${new Set(r.map((j) => j.company)).size} companies</span></div>
+      ${r.length ? `<div class="jlist">${r.slice(0, n).map(jobRow).join("")}</div>` : '<p class="empty">Nothing here with these filters.</p>'}
+      ${r.length > n ? `<p><button class="mini" data-act="bmore" data-t="${esc(t)}">Show all ${r.length}</button></p>` : ""}
+      ${lk.length ? `<p class="small dim" style="margin-top:10px">Not read automatically (their site doesn't allow it) — search there: ${lk.map((l) => `<a class="mini" href="${safeUrl(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)} ↗</a>`).join(" ")}</p>` : ""}`;
+  }).join("");
+  const ok = Object.values(C.health || {}).filter((h) => h.ok).length;
+  return `<div class="page-head"><h2>Big companies</h2><p>Vacancies read straight from each company's <b>own careers site</b> — FAANG+ first, then big tech, then India's majors. Every job shows how well your resumes match and how sure we are it's real. Click any row for details. Startups are in <a href="#career/jobs">Startups & more</a>.</p></div>
+    ${D.resumes.length ? "" : `<p class="note">Upload your resumes in the <a href="#career/resumes">Resumes</a> tab to see match %, which resume to send, and what to put in it.</p>`}
+    <div class="filters">
+      <div class="frow"><input class="search" id="bq" placeholder="Search title, company, city, skill…" value="${esc(S.f.bq || "")}">
+        <select class="sel" data-change="bsort"><option value="match">Best match</option><option value="new" ${sort === "new" ? "selected" : ""}>Newest</option><option value="company" ${sort === "company" ? "selected" : ""}>Company order</option></select></div>
+      <div class="frow" data-all='${esc(JSON.stringify(GROUPS))}'><span class="lab">Role</span>${chips(GROUPS, fG, "bgrp")}</div>
+      <div class="frow" data-all='${esc(JSON.stringify(Object.values(FITS)))}'><span class="lab">Level</span>${chips(Object.values(FITS), fF, "bfit")}</div>
+    </div>
+    <p class="dim small">${rows.length} roles shown · ${bigRows().length} technical roles from ${ok} companies · ${C.nontech_hidden || 0} non-technical hidden · updated ${esc(ago(C.updated) || "—")}</p>
+    ${sections}`;
+}
+ACT.bsort = (d, el) => { S.f.bsort = el.value; store.set("f", S.f); render(); };
+ACT.bmore = (d) => { S.f.bmore = {...(S.f.bmore || {}), [d.t]: true}; store.set("f", S.f); render(); };
+document.addEventListener("input", (e) => { if (e.target.id === "bq") { S.f.bq = e.target.value; clearTimeout(S._bq); S._bq = setTimeout(() => { render(); const q = $("#bq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.classList?.contains("jrow")) ACT.job(e.target.dataset); });
+
+ACT.job = async (d) => {
+  openDlg(`<button class="x" data-act="close" aria-label="Close">✕</button><p class="dim">Loading…</p>`);
+  let j;
+  try { const r = await fetch("/api/job?id=" + encodeURIComponent(d.id)); if (r.status === 401) { location.href = "/login"; return; } if (!r.ok) throw new Error(await r.text()); j = await r.json(); }
+  catch (e) { openDlg(`<button class="x" data-act="close" aria-label="Close">✕</button><p>Couldn't load this job (it may have closed).</p>`); return; }
+  const A = j.advice || {}, L = j.legit || {};
+  const meta = JSON.stringify({title: j.title, company: j.company, url: j.url, platform: "Official careers site", location: j.location || ""});
+  const s = st("role:" + j.id);
+  const resTable = (A.resumes || []).length ? `<div class="tbl"><table class="mtable"><thead><tr><th>Resume</th><th>Match</th><th>Shows</th><th>Missing</th></tr></thead><tbody>
+      ${A.resumes.map((m) => `<tr><td>${m.resume === A.best ? "★ " : ""}${esc(m.resume)}</td><td><b>${m.pct == null ? "—" : m.pct + "%"}</b></td>
+        <td class="small">${esc(m.matched.join(", ") || "—")}</td><td class="small dim">${esc(m.missing.slice(0, 8).join(", ") || "—")}</td></tr>`).join("")}</tbody></table></div>
+      <p class="small dim">${esc(A.note || "")}</p>` : `<p class="note">${esc(A.note || "")}</p>`;
+  const pts = (A.points || []).map((p) => `<div class="chk"><i class="${p.kind === "gap" ? "tC" : "tA"}">${p.kind === "gap" ? "!" : "✓"}</i><span>${esc(p.text)}</span>
+      <span class="d">${[...new Set((p.evidence || []).map((e) => e.resume_line).filter(Boolean))].slice(0, 3).map((l) => `<q class="rl">${esc(l)}</q>`).join("")}</span></div>`).join("");
+  openDlg(`<button class="x" data-act="close" aria-label="Close">✕</button>
+    <div class="dim small">${esc(j.company)} · ${esc(j.company_tier)} · ${esc(j.location || "")}</div>
+    <h2>${esc(j.title)}</h2>
+    <div class="row" style="margin:12px 0"><a class="primary" href="${safeUrl(j.url)}" target="_blank" rel="noopener noreferrer">Apply on the official site ↗</a>
+      <button class="mini ${s === "saved" ? "on" : ""}" data-act="role2" data-id="${esc(j.id)}" data-s="saved" data-meta='${esc(meta)}'>Save</button>
+      <button class="mini ${s === "applied" ? "on" : ""}" data-act="role2" data-id="${esc(j.id)}" data-s="applied" data-meta='${esc(meta)}'>Applied</button>
+      <button class="mini" data-act="role2" data-id="${esc(j.id)}" data-s="hidden" data-meta='${esc(meta)}'>Hide</button></div>
+    <h3>Is it real? <span class="${L.pct >= 95 ? "tA" : L.pct >= 80 ? "tB" : "tC"}">${esc(L.pct)}% · ${esc(L.band)}</span></h3>
+    ${(L.checks || []).map((c) => `<div class="chk"><i class="${c.ok ? "tA" : "tD"}">${c.ok ? "✓" : "✕"}</i><span>${esc(c.label)}</span><span class="d">${esc(c.detail)}</span></div>`).join("")}
+    <p class="small faint">A rule score from the checks above, not a measured probability. Where a job comes from matters most: text checks alone catch only about 1 in 8 scams.</p>
+    <h3>What kind of role</h3>
+    <div class="meta"><span class="tag who">${esc(j.family)}</span>${(j.specialties || []).map((x) => `<span class="tag">${esc(x)}</span>`).join("")}
+      <span class="tag ${FIT_CLS[j.fresher_fit]}">${esc(j.level)} · ${esc(FITS[j.fresher_fit])}</span><span class="tag">${esc(j.employment)}</span>${j.work_mode !== "Not stated" ? `<span class="tag">${esc(j.work_mode)}</span>` : ""}</div>
+    <p class="small dim">Level: ${esc(j.level_evidence)} (${esc(j.level_conf)} confidence). Role family from the ${esc(j.family_evidence)} (${esc(j.family_conf)} confidence).</p>
+    ${(A.hard || []).length ? `<p class="flag warn">Can't be fixed by a resume: ${esc(A.hard.join("; "))}</p>` : ""}
+    <h3>Your resumes vs this job${A.best ? ` — send <span class="tA">${esc(A.best)}</span>` : ""}</h3>${resTable}
+    ${pts ? `<h3>What to put in your resume</h3>${pts}<p class="small faint">Built only from your resume text and this job's text. Never add a skill you haven't used.</p>` : ""}
+    <details><summary>Job description (from the official site)</summary><div class="desc">${esc(j.desc || "This site doesn't give a description in its list — open the official page.")}</div></details>`);
+};
+ACT.role2 = (d) => { track("role:" + d.id, d.s, JSON.parse(d.meta)); $("#dlg").close(); };
+
+/* ---------- RESUMES ---------- */
+function careerResumes() {
+  const R = D.resumes || [];
+  return `<div class="page-head"><h2>Resumes</h2><p>Upload each version of your resume (PDF, DOCX or TXT, up to 3 MB). Career Hub reads the text and uses it to score every big-company job and to tell you which version to send. Only the text is kept, in your private data store — never on GitHub. Delete any time.</p></div>
+    <div class="filters"><div class="formrow">
+      <label class="field">Name for this version<input id="rName" maxlength="40" placeholder="e.g. ML engineer"></label>
+      <label class="field">File<input id="rFile" type="file" accept=".pdf,.docx,.txt"></label>
+      <button class="primary" data-act="rup">Upload</button></div></div>
+    ${R.length ? `<div class="grid2">${R.map((r) => `<article class="card"><div class="card-top"><span>${esc(r.filename || "")}</span><span>${esc(ago(r.uploaded))}</span></div>
+      <h4>${esc(r.name)}</h4><p class="sum">${r.skills.length} skills found · ${r.chars} characters of text</p>
+      <div class="meta">${r.skills.map((x) => `<span class="tag">${esc(x)}</span>`).join("")}</div>
+      <div class="card-foot"><span class="small faint">Wrong skills? The resume text is what counts — check the PDF exports as text.</span><button class="mini warnbtn" data-act="rdel" data-n="${esc(r.name)}">Delete</button></div></article>`).join("")}</div>`
+      : '<p class="empty">No resumes yet.</p>'}`;
+}
+ACT.rup = async () => {
+  const f = $("#rFile").files[0], name = $("#rName").value.trim() || (f && f.name.replace(/\.[^.]+$/, "").slice(0, 40));
+  if (!f) { toast("Pick a file first", true); return; }
+  if (f.size > 3 * 1024 * 1024) { toast("File must be under 3 MB", true); return; }
+  const data = await new Promise((ok, no) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result).split(",")[1]); rd.onerror = no; rd.readAsDataURL(f); });
+  try { const r = await post("/api/resume", {name, filename: f.name, data}); toast(`Saved “${r.name}” — ${r.skills.length} skills found`); await load(true); }
+  catch (e) { let m = "Upload failed"; try { m = JSON.parse(e.message).detail || m; } catch (_) {} toast(m, true); }
+};
+ACT.rdel = async (d) => { try { await post("/api/resume/delete", {name: d.n}); toast("Deleted"); await load(true); } catch (e) { toast("Couldn't delete", true); } };
+
 /* ---------- render ---------- */
-const VIEWS = {career: {today: careerToday, jobs: careerJobs, apps: careerApps, companies: careerCompanies, sites: careerSites},
+const VIEWS = {career: {today: careerToday, big: careerBig, jobs: careerJobs, resumes: careerResumes, apps: careerApps, companies: careerCompanies, sites: careerSites},
   freelance: {today: freeToday, gigs: freeGigs, ai: freeAI, pipe: freePipe, earn: freeEarn, kit: freeKit},
   settings: {settings: pageSettings}, safety: {safety: pageSafety}, status: {status: pageStatus}};
 function render() {
@@ -709,7 +871,7 @@ async function load(fresh) {
   D = await r.json();
   D.tracker.items = D.tracker.items || {};
   $("#who").textContent = "for " + D.profile.first_name;
-  $("#upd").textContent = `Gigs ${ago(D.gigs_updated) || "—"} · Jobs ${ago(D.roles_updated) || "—"}`;
+  $("#upd").textContent = `Big companies ${ago(D.careers?.updated) || "—"} · Jobs ${ago(D.roles_updated) || "—"} · Gigs ${ago(D.gigs_updated) || "—"}`;
   render();
 }
 S.f = store.get("f", {});

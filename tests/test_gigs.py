@@ -8,6 +8,8 @@ shutil.rmtree(WORK, ignore_errors=True); os.makedirs(WORK)
 os.environ.update(DATA_DIR=os.path.join(WORK, "data"), GEMINI_PAUSE="0")
 sys.path.insert(0, REPO)
 NOW = time.time()
+# sample data is dated relative to NOW (fixed dates turned this test into a time bomb once they aged past 10 days)
+_d = lambda days, fmt="%Y-%m-%dT%H:%M:%SZ": time.strftime(fmt, time.gmtime(NOW - days * 86400))
 FAILS = []
 def chk(c, m):
     print(("PASS " if c else "FAIL ") + m)
@@ -44,13 +46,13 @@ FIX = {
     "locationRestrictions": ["United States"], "description": "Instagram growth", "pubDate": NOW - 10000, "applicationLink": "https://him/2", "guid": "https://him/2"}],
    "nextCursor": None},
  "jobicy": {"jobs": [{"id": 21, "url": "https://jobicy/21", "jobTitle": "LLM Evaluation Specialist (Contract)", "companyName": "EvalCo",
-    "jobIndustry": ["AI"], "jobType": ["contract"], "jobGeo": "Anywhere", "jobDescription": "Evaluate model outputs, python", "pubDate": "2026-10-27 08:00:00"},
+    "jobIndustry": ["AI"], "jobType": ["contract"], "jobGeo": "Anywhere", "jobDescription": "Evaluate model outputs, python", "pubDate": _d(1, "%Y-%m-%d %H:%M:%S")},
     {"id": 22, "url": "https://jobicy/22", "jobTitle": "Old gig", "companyName": "X", "jobType": ["contract"], "jobGeo": "Anywhere",
      "jobDescription": "python", "pubDate": "2026-01-01 08:00:00"}]},
  "remotive": {"jobs": [{"id": 31, "url": "https://remotive/31", "title": "Python automation freelancer (n8n, APIs)", "company_name": "AutoCo",
-    "job_type": "freelance", "publication_date": "2026-10-27T05:00:00", "candidate_required_location": "Worldwide", "description": "automation with python and n8n"}]},
+    "job_type": "freelance", "publication_date": _d(1, "%Y-%m-%dT%H:%M:%S"), "candidate_required_location": "Worldwide", "description": "automation with python and n8n"}]},
  "wwr": """<?xml version="1.0"?><rss><channel><item><title>Acme: Computer Vision Contractor</title><link>https://wwr/1</link>
-   <guid>https://wwr/1</guid><pubDate>Tue, 27 Oct 2026 04:00:00 +0000</pubDate><region>Anywhere in the World</region><type>Contract</type>
+   <guid>https://wwr/1</guid><pubDate>""" + _d(1, "%a, %d %b %Y %H:%M:%S +0000") + """</pubDate><region>Anywhere in the World</region><type>Contract</type>
    <description>&lt;p&gt;OpenCV, PyTorch, YOLO&lt;/p&gt;</description></item></channel></rss>""",
  "hn_search": {"hits": [{"objectID": "999", "title": "Ask HN: Freelancer? Seeking freelancer? (October 2026)"}]},
  "hn_item": {"children": [{"id": 1001, "created_at_i": NOW - 20000, "text": "SEEKING FREELANCER | Remote | Need a PyTorch dev to fine-tune a vision model. Budget $2k."},

@@ -15,7 +15,8 @@ from common import levels
 OPTS = {"title_underscores": True, "desc_fallback_tech_only": True, "nontech_ext": True, "other_tech": True,
         "hardware_ext": True, "swe_ext": True, "research_titles": True, "genai_ext": False,
         "manager_not_level": True, "mts_levels": False, "student_titles": False, "year_ranges": True,
-        "title_level_first": True, "product_titles_first": True, "years_required_only": False}
+        "title_level_first": True, "product_titles_first": True, "years_required_only": False,
+        "cv_strict": False}
 
 NON_TECH_EXT = (r"strategist|sourcer|government affairs|public policy|total rewards|accounting|technical writer|"
                 r"writer|vendor|growth|collections|enablement|mobility|social experience|costing|fp&a|planner|"
@@ -32,6 +33,10 @@ HW_EXT = (r"\b(design engineer|dft|logic design|physical design|design evaluatio
           r"reliability engineer|rda|layout|test process|soc architect|asic|hw developer)\b")
 SWE_EXT = r"\b(architect|programming|technical manager|salesforce engineer|backend engineer|kernel|build)\b"
 RESEARCH_TITLES = r"\b(researcher|research scientist|student researcher|post-?doc\w*|research intern|research phd)\b"
+# 'Prime Video', 'Image Ads' are team names; vision work says so
+CV_STRICT = (r"\b(computer vision|machine vision|vision (?:ai|engineer|scientist|research\w*)|perception|imaging|"
+             r"image (?:processing|understanding|generation|recognition)|video (?:understanding|analytics|ai|generation|"
+             r"processing)|3d (?:vision|reconstruction)|multimodal|cv engineer)\b")
 PRODUCT_TITLES = r"\b(product manager|program manager|technical program|product owner|product designer|ux designer)\b"
 GENAI_EXT = r"\b(voice|agent engineer|agentic systems?|agents)\b"
 
@@ -114,6 +119,8 @@ def _family(title, desc, o=None):
     if o["hardware_ext"] and re.search(HW_EXT, t) and not re.search(r"\b(software|machine learning|ml|ai)\b", t):
         return "Embedded / Hardware", "high", "title"
     for fam, pat, _ in FAMILIES:
+        if o["cv_strict"] and fam == "Computer Vision":
+            pat = CV_STRICT
         if re.search(pat, t, re.I):
             # 'scientist' alone means AI Research only when nothing more specific matched before it
             return fam, "high", "title"
