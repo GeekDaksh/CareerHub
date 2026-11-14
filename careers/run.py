@@ -110,6 +110,13 @@ def run(now=None, budget=BUDGET, collect=S.collect):
           f"companies · {len(kept)} stored · {vis} shown · {ml} ML/AI · {fresh} fresher-fit"
           + (f" · {dropped} dropped (unsafe link)" if dropped else "")
           + ("" if ok else " · NOT SAVED (output check failed, last good list kept)"))
+    if os.environ.get("GITHUB_ACTIONS"):      # one-line summary readable through GitHub's API (logs aren't)
+        bad = [f"{n}: {h.get('error', '')[:60]}" for n, h in sorted(run_health.items()) if not h.get("ok")]
+        print(f"::notice title=Big companies::{len(got)} fetched ({new} new) · {len(kept)} stored · {vis} shown · "
+              f"{ml} ML/AI · {fresh} fresher-fit · {sum(1 for h in run_health.values() if h.get('ok'))}/{len(run_health)} "
+              f"companies ok" + (" · saved" if ok else " · NOT SAVED (gate)"))
+        if bad:
+            print("::warning title=Big companies down::" + " | ".join(bad)[:900])
     for n, h in sorted(run_health.items()):
         print(f"  {n}: {'ok ' + str(h['count']) if h.get('ok') else 'FAILED ' + h.get('error', '')} {h.get('secs', '')}s")
     return kept
