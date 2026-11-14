@@ -8,7 +8,25 @@ import time
 from careers import registry as R, sources as S
 
 
+def dump(path):
+    """Collect full results from every working site and save them (public job data only) for building the
+    classifier and its frozen test set."""
+    import os
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    health = {}
+    jobs = S.collect([c for c in R.CANDIDATES if c["ats"] != "link"], health, budget_s=1500)
+    with open(path, "w") as f:
+        for j in jobs:
+            f.write(json.dumps({k: j.get(k) for k in ("id", "company", "company_tier", "title", "location", "kind_hint",
+                                                      "url", "posted", "desc")}) + "\n")
+    print(f"::notice title=dump::{len(jobs)} jobs from {sum(h['ok'] for h in health.values())} sites; "
+          + "; ".join(f"{k} {v['count']}" for k, v in health.items()))
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "--dump":
+        dump(sys.argv[2])
+        return 0
     res = []
     for c in R.CANDIDATES:
         if c["ats"] == "link":

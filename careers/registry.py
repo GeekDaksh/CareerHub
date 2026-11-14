@@ -4,7 +4,8 @@
 tier:   "FAANG+" | "Big tech" | "India major"
 ats:    connector in careers/sources.py, or "link" = official search link only (not collected automatically:
         the site forbids it in robots.txt or needs a login)
-status: filled in by careers/probe.py runs on GitHub's servers — only "ok" entries are collected.
+Verified 2026-11-15 by careers/probe.py on GitHub's servers (run 43635231183): every automatic entry below
+answered with India jobs (Canonical and Cloudflare answered with 0). Failed boards were moved to "link".
 """
 FAANG = "FAANG+"
 BIG = "Big tech"
@@ -22,19 +23,18 @@ CANDIDATES = [
     {"name": "NVIDIA", "tier": BIG, "ats": "workday", "tenant": "nvidia", "wd": "wd5", "site": "NVIDIAExternalCareerSite"},
     {"name": "Salesforce", "tier": BIG, "ats": "workday", "tenant": "salesforce", "wd": "wd12", "site": "External_Career_Site"},
     {"name": "Adobe", "tier": BIG, "ats": "workday", "tenant": "adobe", "wd": "wd5", "site": "external_experienced"},
-    {"name": "Adobe (university)", "tier": BIG, "ats": "workday", "tenant": "adobe", "wd": "wd5", "site": "external_university"},
     {"name": "Intel", "tier": BIG, "ats": "workday", "tenant": "intel", "wd": "wd1", "site": "External"},
-    {"name": "Qualcomm", "tier": BIG, "ats": "workday", "tenant": "qualcomm", "wd": "wd5", "site": "External"},
+    {"name": "Qualcomm", "tier": BIG, "ats": "link", "search_url": "https://www.qualcomm.com/company/careers"},
     {"name": "Micron", "tier": BIG, "ats": "workday", "tenant": "micron", "wd": "wd1", "site": "External"},
-    {"name": "Dell", "tier": BIG, "ats": "workday", "tenant": "dell", "wd": "wd1", "site": "External"},
+    {"name": "Dell", "tier": BIG, "ats": "link", "search_url": "https://jobs.dell.com/en/search-jobs/India"},
     {"name": "HP", "tier": BIG, "ats": "workday", "tenant": "hp", "wd": "wd5", "site": "ExternalCareerSite"},
-    {"name": "Walmart Global Tech", "tier": BIG, "ats": "workday", "tenant": "walmart", "wd": "wd5", "site": "WalmartExternal"},
+    {"name": "Walmart Global Tech", "tier": BIG, "ats": "link", "search_url": "https://careers.walmart.com/"},
     {"name": "Autodesk", "tier": BIG, "ats": "workday", "tenant": "autodesk", "wd": "wd1", "site": "Ext"},
     {"name": "Applied Materials", "tier": BIG, "ats": "workday", "tenant": "amat", "wd": "wd1", "site": "External"},
     {"name": "Analog Devices", "tier": BIG, "ats": "workday", "tenant": "analogdevices", "wd": "wd1", "site": "External"},
     {"name": "Cadence", "tier": BIG, "ats": "workday", "tenant": "cadence", "wd": "wd1", "site": "External_Careers"},
     {"name": "Workday", "tier": BIG, "ats": "workday", "tenant": "workday", "wd": "wd5", "site": "Workday"},
-    {"name": "Nutanix", "tier": BIG, "ats": "workday", "tenant": "nutanix", "wd": "wd1", "site": "Nutanix"},
+    {"name": "Nutanix", "tier": BIG, "ats": "link", "search_url": "https://careers.nutanix.com/"},
     {"name": "Bosch", "tier": BIG, "ats": "smartrecruiters", "slug": "BoschGroup"},
     {"name": "ServiceNow", "tier": BIG, "ats": "smartrecruiters", "slug": "ServiceNow"},
     # ---- Big tech (public job-board APIs)
@@ -48,15 +48,12 @@ CANDIDATES = [
     {"name": "MongoDB", "tier": BIG, "ats": "greenhouse", "slug": "mongodb"},
     {"name": "Datadog", "tier": BIG, "ats": "greenhouse", "slug": "datadog"},
     {"name": "Canonical", "tier": BIG, "ats": "greenhouse", "slug": "canonical"},
-    {"name": "Atlassian", "tier": BIG, "ats": "lever", "slug": "atlassian"},
+    {"name": "Atlassian", "tier": BIG, "ats": "link", "search_url": "https://www.atlassian.com/company/careers/all-jobs"},
     # ---- India majors
     {"name": "Freshworks", "tier": INDIA, "ats": "smartrecruiters", "slug": "Freshworks"},
-    {"name": "Swiggy", "tier": INDIA, "ats": "lever", "slug": "swiggy"},
+    {"name": "Swiggy", "tier": INDIA, "ats": "link", "search_url": "https://careers.swiggy.com/"},
     {"name": "Meesho", "tier": INDIA, "ats": "lever", "slug": "meesho"},
     {"name": "CRED", "tier": INDIA, "ats": "lever", "slug": "cred"},
-    {"name": "InMobi", "tier": INDIA, "ats": "lever", "slug": "inmobi"},
-    {"name": "ShareChat", "tier": INDIA, "ats": "lever", "slug": "sharechat"},
-    {"name": "Postman", "tier": INDIA, "ats": "greenhouse", "slug": "postman"},
     {"name": "Sarvam AI", "tier": INDIA, "ats": "ashby", "slug": "sarvam"},
     {"name": "Flipkart", "tier": INDIA, "ats": "link", "search_url": "https://www.flipkartcareers.com/#!/joblist"},
     {"name": "TCS Research", "tier": INDIA, "ats": "link", "search_url": "https://ibegin.tcs.com/iBegin/jobs/search"},
