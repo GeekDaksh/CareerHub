@@ -9,12 +9,13 @@ GOLD = os.path.join(HERE, "gold.jsonl")
 FRESH = {"Intern", "New grad / entry"}
 
 
-def load_gold():
-    want = open(os.path.join(HERE, "gold.sha256")).read().split()[0]
-    got = hashlib.sha256(open(GOLD, "rb").read()).hexdigest()
+def load_gold(name="gold"):
+    path = os.path.join(HERE, f"{name}.jsonl")
+    want = open(os.path.join(HERE, f"{name}.sha256")).read().split()[0]
+    got = hashlib.sha256(open(path, "rb").read()).hexdigest()
     if got != want:
         raise SystemExit(f"GATE: gold set changed (sha {got[:12]} != {want[:12]}). It is frozen; do not edit it.")
-    return [json.loads(l) for l in open(GOLD)]
+    return [json.loads(l) for l in open(path)]
 
 
 def boot(flags, n=2000, seed=7):
@@ -30,8 +31,10 @@ def card(name, flags, meaning):
     return {"metric": name, "value": round(v, 3), "n": len(flags), "ci95": boot(flags), "meaning": meaning}
 
 
-def run(show_errors=False):
-    gold = load_gold()
+def run(show_errors=False, final=False):
+    if final and show_errors:
+        raise SystemExit("no error listing on the test set")
+    gold = load_gold("test" if final else "gold")
     fam, lev, mlflag, nontech, fresh_found, fresh_prec, errs = [], [], [], [], [], [], []
     for g in gold:
         c = classify(g)
@@ -60,6 +63,11 @@ def run(show_errors=False):
 
 
 if __name__ == "__main__":
-    out = run("--errors" in sys.argv)
+    final = "--final" in sys.argv
+    out = run("--errors" in sys.argv, final)
+    if final:
+        import time
+        with open(os.path.join(HERE, "test_runs.log"), "a") as f:
+            f.write(json.dumps({"at": time.strftime("%Y-%m-%d %H:%M"), "cards": out}) + "\n")
     if "--save" in sys.argv:
         json.dump(out, open(os.path.join(HERE, sys.argv[sys.argv.index("--save") + 1]), "w"), indent=1)
