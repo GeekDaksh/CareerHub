@@ -1,0 +1,62 @@
+[
+ {
+  "metric": "family_accuracy",
+  "value": 0.67,
+  "n": 200,
+  "ci95": [
+   0.605,
+   0.735
+  ],
+  "meaning": "role family matches the hand label"
+ },
+ {
+  "metric": "level_accuracy",
+  "value": 0.89,
+  "n": 200,
+  "ci95": [
+   0.845,
+   0.93
+  ],
+  "meaning": "level matches the hand label"
+ },
+ {
+  "metric": "ml_flag_accuracy",
+  "value": 0.905,
+  "n": 200,
+  "ci95": [
+   0.865,
+   0.94
+  ],
+  "meaning": "'is an ML/AI role' yes/no is right"
+ },
+ {
+  "metric": "nontech_accuracy",
+  "value": 0.88,
+  "n": 200,
+  "ci95": [
+   0.835,
+   0.92
+  ],
+  "meaning": "'non-technical' yes/no is right"
+ },
+ {
+  "metric": "fresher_recall",
+  "value": 0.625,
+  "n": 8,
+  "ci95": [
+   0.25,
+   0.875
+  ],
+  "meaning": "fresher jobs (intern/new grad) the app marks as fresher"
+ },
+ {
+  "metric": "fresher_precision",
+  "value": 0.833,
+  "n": 6,
+  "ci95": [
+   0.5,
+   1.0
+  ],
+  "meaning": "jobs the app marks fresher that really are"
+ }
+]
