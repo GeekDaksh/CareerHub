@@ -157,7 +157,7 @@ def workday(c, queries=QUERIES, details=8):
     jobs = []
     for i, x in enumerate(out.values()):
         desc, loc, posted = "", x["loc"], None
-        if i < details * 6:   # details only for a capped number (one request each)
+        if i < details * 6 and x["path"] not in c.get("_known", ()):   # details: capped, and only for new jobs
             try:
                 dd = get(f"{api}{x['path']}").get("jobPostingInfo") or {}
                 desc = dd.get("jobDescription") or ""
@@ -168,7 +168,7 @@ def workday(c, queries=QUERIES, details=8):
         if not in_reach(loc):
             continue
         jobs.append(_job(c["name"], x["path"].rsplit("_", 1)[-1] or x["path"], x["title"], f"{host}/{site}{x['path']}",
-                         loc, posted, desc, "", "workday"))
+                         loc, posted, desc, "", "workday", {"src_key": x["path"]}))
     return jobs
 
 
@@ -201,15 +201,39 @@ def ashby(c):
     return out
 
 
-def smartrecruiters(c):
-    d = get(f"https://api.smartrecruiters.com/v1/companies/{c['slug']}/postings", params={"country": "in", "limit": 100})
-    out = []
-    for j in d.get("content") or []:
+SR_TECH = re.compile(r"engineer|developer|scientist|data|machine|\bml\b|\bai\b|intern|graduate|trainee|research|"
+                     r"software|vision|analyst|architect", re.I)
+
+
+def smartrecruiters(c, details=40):
+    """List API has no description, so fetch it (one request each) for new technical-looking jobs, capped."""
+    api = f"https://api.smartrecruiters.com/v1/companies/{c['slug']}/postings"
+    out, offset = [], 0
+    while offset < 300:
+        d = get(api, params={"country": "in", "limit": 100, "offset": offset})
+        page = d.get("content") or []
+        out += page
+        if len(page) < 100:
+            break
+        offset += 100
+    jobs, fetched = [], 0
+    for j in out:
         loc = j.get("location") or {}
         locs = ", ".join(filter(None, [loc.get("city"), loc.get("region"), loc.get("country")]))
-        out.append(_job(c["name"], j["id"], j.get("name"), f"https://jobs.smartrecruiters.com/{c['slug']}/{j['id']}", locs,
-                        j.get("releasedDate"), "", (j.get("typeOfEmployment") or {}).get("label", ""), "smartrecruiters"))
-    return [j for j in out if in_reach(j["location"])]
+        if not in_reach(locs):
+            continue
+        desc = ""
+        jid = f"off:{c['name'].lower().replace(' ', '')}:{j['id']}"
+        if fetched < details and jid not in c.get("_known", ()) and SR_TECH.search(j.get("name") or ""):
+            fetched += 1
+            try:
+                ad = (get(f"{api}/{j['id']}").get("jobAd") or {}).get("sections") or {}
+                desc = " ".join(f"{(v or {}).get('title', '')}: {(v or {}).get('text', '')}" for v in ad.values())
+            except Exception:
+                pass
+        jobs.append(_job(c["name"], j["id"], j.get("name"), f"https://jobs.smartrecruiters.com/{c['slug']}/{j['id']}", locs,
+                         j.get("releasedDate"), desc, (j.get("typeOfEmployment") or {}).get("label", ""), "smartrecruiters"))
+    return jobs
 
 
 CONNECTORS = {"amazon": amazon, "google": google, "eightfold": eightfold, "workday": workday,
@@ -221,13 +245,15 @@ def search_link(c):
     return c.get("search_url", "")
 
 
-def collect(companies, health, now=None, budget_s=420):
-    """Run every company's connector. One failing company never stops the others; the whole step has a budget."""
+def collect(companies, health, now=None, budget_s=420, known=None):
+    """Run every company's connector. One failing company never stops the others; the whole step has a budget.
+    known = {company: set of job ids/paths already stored} so details are fetched only for new jobs."""
     now, t0, out = now or time.time(), time.time(), []
     for c in companies:
         fn = CONNECTORS.get(c.get("ats"))
         if not fn:
             continue
+        c = {**c, "_known": (known or {}).get(c["name"], set())}
         if time.time() - t0 > budget_s:
             health[c["name"]] = {"ok": False, "count": 0, "at": now, "error": "skipped: time budget used, next run"}
             continue

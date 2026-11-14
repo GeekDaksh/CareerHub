@@ -34,6 +34,8 @@ SCHEMAS = {
              "scam": list, "category": str},
     "roles": {"id": str, "title": str, "url": str, "source_kind": str, "score": (int, float), "trust": dict,
               "level": str},
+    "careers": {"id": str, "title": str, "url": str, "company": str, "company_tier": str, "family": str,
+                "level": str, "legit": dict, "visible": bool, "last_seen": (int, float)},
 }
 
 
@@ -70,6 +72,8 @@ def check_items(kind, items, prev_visible=None, min_keep=0.2, min_prev=10):
 
     if kind == "gigs":
         bad = [it["title"][:50] for it in items if it["visible"] and it["scam"]]
+    elif kind == "careers":
+        bad = [it["title"][:50] for it in items if it["visible"] and it["legit"].get("pct", 0) < 55]
     else:
         bad = [it["title"][:50] for it in items if it["trust"].get("verdict") == "risky"]
     if bad:

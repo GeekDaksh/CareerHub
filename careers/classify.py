@@ -13,8 +13,9 @@ from common import levels
 # Improvement-loop switches (eval/careers/loop.py turns them on one at a time and keeps only those that pass the
 # declared accept rule in eval/careers/OBJECTIVE.md). The values here are the accepted ones.
 OPTS = {"title_underscores": True, "desc_fallback_tech_only": True, "nontech_ext": True, "other_tech": True,
-        "hardware_ext": True, "swe_ext": True, "research_titles": True, "genai_ext": True,
-        "manager_not_level": True, "mts_levels": False, "student_titles": True, "year_ranges": True}
+        "hardware_ext": True, "swe_ext": True, "research_titles": True, "genai_ext": False,
+        "manager_not_level": True, "mts_levels": False, "student_titles": False, "year_ranges": True,
+        "title_level_first": True, "product_titles_first": True, "years_required_only": False}
 
 NON_TECH_EXT = (r"strategist|sourcer|government affairs|public policy|total rewards|accounting|technical writer|"
                 r"writer|vendor|growth|collections|enablement|mobility|social experience|costing|fp&a|planner|"
@@ -31,6 +32,7 @@ HW_EXT = (r"\b(design engineer|dft|logic design|physical design|design evaluatio
           r"reliability engineer|rda|layout|test process|soc architect|asic|hw developer)\b")
 SWE_EXT = r"\b(architect|programming|technical manager|salesforce engineer|backend engineer|kernel|build)\b"
 RESEARCH_TITLES = r"\b(researcher|research scientist|student researcher|post-?doc\w*|research intern|research phd)\b"
+PRODUCT_TITLES = r"\b(product manager|program manager|technical program|product owner|product designer|ux designer)\b"
 GENAI_EXT = r"\b(voice|agent engineer|agentic systems?|agents)\b"
 
 # ---------------------------------------------------------------- role families (checked in this order)
@@ -101,6 +103,8 @@ def _family(title, desc, o=None):
     nontech = NON_TECH + ("|" + NON_TECH_EXT if o["nontech_ext"] else "")
     if re.search(nontech, t) and not re.search(r"\b(engineer|scientist|developer|research)\b", t):
         return "Non-technical", "high", "title"
+    if o["product_titles_first"] and re.search(PRODUCT_TITLES, t):
+        return "Product / Design", "high", "title"
     if o["research_titles"] and re.search(RESEARCH_TITLES, t):
         return "AI Research", "high", "title"
     if o["genai_ext"] and re.search(GENAI_EXT, t):
@@ -149,7 +153,7 @@ SENIOR = re.compile(r"\b(senior|sr\.?|staff|principal|lead|manager|director|head
 
 
 NOT_LEVEL_MANAGER = re.compile(r"\b(product|program|project|account|customer success|technical program|partner|"
-                               r"collections|category|deputy|assistant|asst\.?)\s+manager\b|\bmanager\s+(ii|2|i|1)\b", re.I)
+                               r"collections|category|deputy|assistant|asst\.?)\s+manager\b", re.I)
 STUDENT = re.compile(r"\b(student researcher|student)\b", re.I)
 POSTDOC = re.compile(r"\bpost-?doc\w*\b|\bpost-doctoral\b", re.I)
 SENIOR_MTS = re.compile(r"\b(smts|lmts|pmts|dmts)\b", re.I)
@@ -178,6 +182,13 @@ def level(title, desc, kind_hint="", o=None):
         return "Senior+", "high", f"title says '{SENIOR.search(t).group(0)}'"
     if NEW_GRAD.search(t):
         return "New grad / entry", "high", f"title says '{NEW_GRAD.search(t).group(0)}'"
+    if o["title_level_first"] and MID.search(t):
+        return "Mid", "high", f"title level '{MID.search(t).group(0)}'"
+    if o["years_required_only"]:
+        from careers.match import sections       # 'preferred: 1+ years of X' must not make a 2+ years job entry-level
+        parts, has_req = sections(desc)
+        if has_req:
+            desc = parts["req"]
     yrs = levels.min_years(desc)
     if o["year_ranges"]:
         r = [int(m.group(1)) for m in RANGE_YEARS.finditer(str(desc or "")[:6000])]

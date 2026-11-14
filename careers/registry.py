@@ -38,16 +38,16 @@ CANDIDATES = [
     {"name": "Bosch", "tier": BIG, "ats": "smartrecruiters", "slug": "BoschGroup"},
     {"name": "ServiceNow", "tier": BIG, "ats": "smartrecruiters", "slug": "ServiceNow"},
     # ---- Big tech (public job-board APIs)
-    {"name": "Databricks", "tier": BIG, "ats": "greenhouse", "slug": "databricks"},
-    {"name": "Rubrik", "tier": BIG, "ats": "greenhouse", "slug": "rubrik"},
-    {"name": "Cloudflare", "tier": BIG, "ats": "greenhouse", "slug": "cloudflare"},
-    {"name": "Airbnb", "tier": BIG, "ats": "greenhouse", "slug": "airbnb"},
-    {"name": "Zscaler", "tier": BIG, "ats": "greenhouse", "slug": "zscaler"},
-    {"name": "GitLab", "tier": BIG, "ats": "greenhouse", "slug": "gitlab"},
-    {"name": "Elastic", "tier": BIG, "ats": "greenhouse", "slug": "elastic"},
-    {"name": "MongoDB", "tier": BIG, "ats": "greenhouse", "slug": "mongodb"},
-    {"name": "Datadog", "tier": BIG, "ats": "greenhouse", "slug": "datadog"},
-    {"name": "Canonical", "tier": BIG, "ats": "greenhouse", "slug": "canonical"},
+    {"name": "Databricks", "tier": BIG, "ats": "greenhouse", "slug": "databricks", "domains": ["databricks.com"]},
+    {"name": "Rubrik", "tier": BIG, "ats": "greenhouse", "slug": "rubrik", "domains": ["rubrik.com"]},
+    {"name": "Cloudflare", "tier": BIG, "ats": "greenhouse", "slug": "cloudflare", "domains": ["cloudflare.com"]},
+    {"name": "Airbnb", "tier": BIG, "ats": "greenhouse", "slug": "airbnb", "domains": ["airbnb.com"]},
+    {"name": "Zscaler", "tier": BIG, "ats": "greenhouse", "slug": "zscaler", "domains": ["zscaler.com"]},
+    {"name": "GitLab", "tier": BIG, "ats": "greenhouse", "slug": "gitlab", "domains": ["gitlab.com"]},
+    {"name": "Elastic", "tier": BIG, "ats": "greenhouse", "slug": "elastic", "domains": ["elastic.co"]},
+    {"name": "MongoDB", "tier": BIG, "ats": "greenhouse", "slug": "mongodb", "domains": ["mongodb.com"]},
+    {"name": "Datadog", "tier": BIG, "ats": "greenhouse", "slug": "datadog", "domains": ["datadoghq.com"]},
+    {"name": "Canonical", "tier": BIG, "ats": "greenhouse", "slug": "canonical", "domains": ["canonical.com"]},
     {"name": "Atlassian", "tier": BIG, "ats": "link", "search_url": "https://www.atlassian.com/company/careers/all-jobs"},
     # ---- India majors
     {"name": "Freshworks", "tier": INDIA, "ats": "smartrecruiters", "slug": "Freshworks"},
@@ -61,3 +61,6 @@ CANDIDATES = [
 ]
 
 TIER_RANK = {FAANG: 1, BIG: 2, INDIA: 3}
+
+for _i, _c in enumerate(CANDIDATES):       # rank = order above (FAANG+ first)
+    _c.setdefault("rank", _i)

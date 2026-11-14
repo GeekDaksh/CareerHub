@@ -11,10 +11,10 @@
  },
  {
   "metric": "level_accuracy",
-  "value": 0.93,
+  "value": 0.94,
   "n": 100,
   "ci95": [
-   0.88,
+   0.89,
    0.98
   ],
   "meaning": "level matches the hand label"

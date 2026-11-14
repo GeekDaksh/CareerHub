@@ -56,6 +56,16 @@ def main():
                     "decision": "ACCEPT" if ok else "REJECT", "reason": why, "proposer": "rule (from error diagnosis)"})
         if ok:
             opts, cur = trial, new
+    # one retry for each rejected idea, now that other switches changed (deterministic, same accept rule)
+    for k in [r["change"] for r in log if r.get("decision") == "REJECT"]:
+        if opts[k]:
+            continue
+        new = metrics({**opts, k: True})
+        ok, why = accept(cur, new)
+        log.append({"step": len(log), "change": k + " (retry)", "why_tried": "retry after other changes", "before": cur,
+                    "after": new, "decision": "ACCEPT" if ok else "REJECT", "reason": why, "proposer": "retry rule"})
+        if ok:
+            opts, cur = {**opts, k: True}, new
     with open(os.path.join(HERE, "loop_log.jsonl"), "w") as f:
         for r in log:
             f.write(json.dumps(r) + "\n")
