@@ -73,5 +73,19 @@ def _level(title, desc, opts):
     return "not stated"
 
 
+def min_years(desc):
+    """Smallest 'N years of experience' the description asks for (None if it never says). Uses the accepted
+    patterns from the improvement loop (YEARS, MIN_YEARS, YEARS_EXT) and '0-2 years' style ranges."""
+    d = str(desc or "")[:6000]
+    if re.search(r"\b0\s*(?:[-–]|to)\s*\d\s*(?:years|yrs)", d, re.I):
+        return 0
+    yrs = [int(m.group(1)) for m in YEARS.finditer(d)] + [int(m.group(1)) for m in MIN_YEARS.finditer(d)]
+    yrs += [int(m.group(1)) for rx in YEARS_EXT for m in rx.finditer(d)]
+    yrs += [int(m.group(1)) for m in re.finditer(r"(?:minimum|min\.?|at least)\s*(?:of\s*)?(\d{1,2})\s*\+?\s*(?:years?|yrs?)\b", d, re.I)]
+    yrs += [int(m.group(1)) for m in re.finditer(r"\b(\d{1,2})\s*\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:\w+\s+){0,4}experience", d, re.I)]
+    yrs = [y for y in yrs if y < 30]
+    return min(yrs) if yrs else None
+
+
 def allowed(lvl):
     return lvl in ("entry", "not stated")
