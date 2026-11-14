@@ -13,3 +13,10 @@ Fresher metrics (n=8) are reported but too small to judge changes by.
 Accept rule for each change: primary goes up by ≥ 1 point (2 jobs), or a guardrail goes up by ≥ 1 point with
 primary unchanged; no guardrail drops by more than 1 point; ties rejected.
 Baseline (v1): family 0.670 · level 0.890 · ml_flag 0.905 · nontech 0.880 (train, n=200).
+
+## Amendment (2026-11-14, before loop run 3)
+The dry run on all 2,002 jobs showed level mistakes on Amazon jobs, which train barely covered (Amazon is 21% of all
+jobs but 6% of train). Added `gold2.jsonl`: 60 more FAANG+ jobs (seed 31415), labelled blind the same way, except
+years are read from the *required* qualifications (the more correct reading). Train is now gold + gold2 (n=260).
+Objective, guardrails and accept rule unchanged. The old loop log is archived; the loop is re-run from scratch.
+The test set is unchanged; its next run will be logged as the second final run.

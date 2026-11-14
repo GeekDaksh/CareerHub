@@ -15,5 +15,8 @@
 | 10 | mts_levels | Salesforce SMTS / LMTS mean senior | 0.915 | 0.940 | 1.000 | 0.970 | REJECT not enough gain (family +0.000) |
 | 11 | student_titles | 'Student Researcher' is an internship; post-doc is right after PhD | 0.915 | 0.945 | 1.000 | 0.970 | ACCEPT family same, up: level_accuracy |
 | 12 | year_ranges | '2–5 years in DevOps' (no word 'experience') was missed | 0.915 | 0.965 | 1.000 | 0.970 | ACCEPT family same, up: level_accuracy |
+| 13 | title_level_first | dry run: 'Data Scientist II' read as entry because the description's years were checked first | 0.915 | 0.965 | 1.000 | 0.970 | REJECT not enough gain (family +0.000) |
+| 14 | product_titles_first | dry run: 'Technical Program Manager, AI Products' called an ML role | 0.925 | 0.965 | 1.000 | 0.970 | ACCEPT family +0.010 |
+| 15 | years_required_only | dry run: 'preferred: 1+ years of X' made 'Data Scientist II' (requires 2+) look entry-level | 0.925 | 0.965 | 1.000 | 0.970 | REJECT not enough gain (family +0.000) |
 
-Accepted switches: title_underscores, desc_fallback_tech_only, nontech_ext, other_tech, hardware_ext, swe_ext, research_titles, genai_ext, manager_not_level, student_titles, year_ranges
+Accepted switches: title_underscores, desc_fallback_tech_only, nontech_ext, other_tech, hardware_ext, swe_ext, research_titles, genai_ext, manager_not_level, student_titles, year_ranges, product_titles_first
