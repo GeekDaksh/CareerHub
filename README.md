@@ -1,6 +1,6 @@
 # 🎯 Career Hub
 
-One private web app with two separate sides, **Career** and **Freelance**. It runs on its own and needs no upkeep.
+A self-running job and freelance radar: one web app with two separate sides, **Career** and **Freelance**. It runs on its own and needs no upkeep.
 
 | Side | What you get | Refreshed |
 |---|---|---|
@@ -13,7 +13,7 @@ One private web app with two separate sides, **Career** and **Freelance**. It ru
 **Safety:** every post gets a verdict (verified source / likely real / unverified). Risky posts are blocked, and the Safety tab shows the reason.
 **LinkedIn:** never scraped (that breaks LinkedIn's terms and gets accounts banned). Career Hub reads your own LinkedIn job-alert emails, finds public LinkedIn job pages via web search, and gives one-click entry-level LinkedIn searches.
 
-Free tiers only: GitHub Actions (private repo, about 1,000–1,300 of 2,000 min/month), Render's free web plan for the app (password-protected), a private Hugging Face dataset for data, Gemini's free API, and optional free keys. Your data (contacts, tracker, settings) lives only in the **private** HF dataset.
+Free tiers only: GitHub Actions (free for public repos; a private copy uses about 1,000–1,300 of the 2,000 free min/month), Render's free web plan for the app (password-protected), a private Hugging Face dataset for data, Gemini's free API, and optional free keys. Your data (contacts, tracker, settings) lives only in the **private** HF dataset.
 
 ---
 
