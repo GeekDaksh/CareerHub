@@ -50,6 +50,8 @@ env = {e["key"]: e for e in svc["envVars"]}
 chk(svc["plan"] == "free" and svc["autoDeploy"] is True and svc["type"] == "web", "render.yaml: free web service, redeploys on push")
 chk(env["APP_PASSWORD"].get("sync") is False and env["HF_TOKEN"].get("sync") is False and "value" not in env["HF_TOKEN"],
     "render.yaml: password and token are typed in Render, never stored in the repo")
+chk(all(env[k].get("sync") is False and "value" not in env[k] for k in ("APP_PASSWORD_ARUJA", "APP_PASSWORD_LUBHANA")),
+    "render.yaml: Aruja's and Lubhana's passwords are typed in Render, never stored in the repo")
 chk(env["SESSION_SECRET"].get("generateValue") is True, "render.yaml: session secret is random, made by Render")
 chk("uvicorn server:app" in svc["startCommand"] and "PYTHONPATH=.." in svc["startCommand"] and svc["healthCheckPath"] == "/healthz",
     "render.yaml: starts the same server the tests use, with a health check")

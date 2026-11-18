@@ -72,10 +72,11 @@ chk(c.post("/api/track", json={"key": "gig:x", "status": "saved"}).status_code =
     "signed in but no app header: still refused (cookie alone is not enough)")
 
 good = c.cookies.get("ch_session")
-exp, sig = good.split(".")
-for bad, what in [(f"{int(exp) + 999999}.{sig}", "a longer expiry with the old signature"),
-                  (f"{int(time.time()) - 10}.{srv._sign(int(time.time()) - 10)}", "an expired cookie"),
-                  ("garbage", "garbage"), (f"{exp}.{'0' * 64}", "a forged signature")]:
+u, exp, sig = good.split(".")
+for bad, what in [(f"{u}.{int(exp) + 999999}.{sig}", "a longer expiry with the old signature"),
+                  (f"{u}.{int(time.time()) - 10}.{srv._sign(u, int(time.time()) - 10)}", "an expired cookie"),
+                  ("garbage", "garbage"), (f"{u}.{exp}.{'0' * 64}", "a forged signature"),
+                  (f"{exp}.{sig}", "an old-format cookie (no profile)"), (f"aruja.{exp}.{sig}", "another profile's name on Daksh's signature")]:
     c2 = TestClient(srv.app, base_url="https://testserver", follow_redirects=False)
     c2.cookies.set("ch_session", bad, domain="testserver")
     chk(c2.get("/api/data").status_code == 401, f"cookie attack refused: {what}")

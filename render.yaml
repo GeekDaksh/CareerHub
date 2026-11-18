@@ -18,6 +18,10 @@ services:
         sync: false
       - key: APP_PASSWORD        # your login password, 10+ characters (you type it)
         sync: false
+      - key: APP_PASSWORD_ARUJA   # Aruja's profile password, 10+ characters (leave empty = her profile stays closed)
+        sync: false
+      - key: APP_PASSWORD_LUBHANA # Lubhana's profile password, 10+ characters (leave empty = her profile stays closed)
+        sync: false
       - key: GH_DISPATCH_TOKEN   # optional backup timer: fine-grained GitHub token, this repo only, Actions read+write
         sync: false
       - key: SESSION_SECRET      # random, made by Render

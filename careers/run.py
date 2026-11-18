@@ -91,12 +91,29 @@ def _board_size(ats, slug):
     return len(d.get("jobs") or []) if isinstance(d, dict) else len(d or [])
 
 
+PROFILES = ["daksh", "aruja", "lubhana"]       # same ids as app/server.py USERS
+
+
+def profile_entries():
+    """Every profile's own added companies, tagged with who added them (Daksh's file stays where it always was)."""
+    out = []
+    for u in PROFILES:
+        rel = os.path.join("careerprefs", "companies.json") if u == "daksh" else os.path.join("users", u, "careerprefs", "companies.json")
+        for e in load(os.path.join(DATA_DIR, rel), {}).get("companies", [])[:CU.MAX_COMPANIES]:
+            out.append({**e, "owner": u})
+    return out
+
+
 def custom_companies(old, now, board_size=_board_size):
-    """Daksh's own companies (from the app), each resolved to a connector once and cached in official.json."""
-    entries = load(os.path.join(DATA_DIR, "careerprefs", "companies.json"), {}).get("companies", [])[:CU.MAX_COMPANIES]
-    cache, out, tried = dict(old.get("custom") or {}), [], 0
-    for i, e in enumerate(entries):
+    """Companies people added in the app, each resolved to a connector once and cached in official.json.
+    The same company added by two people is collected once; its jobs are shown only to the people who added it."""
+    merged = {}
+    for e in profile_entries():
         key = f"{e.get('name')}|{e.get('url', '')}"
+        m = merged.setdefault(key, {**e, "owners": []})
+        m["owners"].append(e["owner"])
+    cache, out, tried = dict(old.get("custom") or {}), [], 0
+    for i, (key, e) in enumerate(merged.items()):
         if key not in cache and tried < DISCOVER_PER_RUN:
             tried += 1
             cache[key] = {**CU.discover(e, board_size), "at": now}
@@ -105,9 +122,8 @@ def custom_companies(old, now, board_size=_board_size):
             continue
         c = {k: v for k, v in cfg.items() if k not in ("found", "at")}
         out.append({**c, "name": e["name"], "tier": e.get("tier", "Big tech"), "custom": True, "rank": 500 + i,
-                    "found": cfg.get("found", "")})
-    names = {f"{e.get('name')}|{e.get('url', '')}" for e in entries}
-    return out, {k: v for k, v in cache.items() if k in names}
+                    "found": cfg.get("found", ""), "owners": sorted(set(e["owners"]))})
+    return out, {k: v for k, v in cache.items() if k in merged}
 
 
 def keep(j, company, health, now):
@@ -166,14 +182,21 @@ def run(now=None, budget=BUDGET, collect=S.collect):
         co = companies.get(j["company"])
         if not co or co.get("ats") == "link" or not keep(j, co, health, now):
             continue                       # company removed / now link-only (e.g. robots.txt changed) / closed
-        kept.append(enrich(j, co, now))
+        j = enrich(j, co, now)
+        if co.get("owners"):
+            j["owners"] = co["owners"]          # added by someone in the app → shown only to them
+        else:
+            j.pop("owners", None)
+        kept.append(j)
     kept.sort(key=lambda j: (registry.TIER_RANK.get(j["company_tier"], 9), j.get("company_rank", 99), -(j.get("posted") or 0)))
     prev_visible = sum(1 for j in old.get("jobs", []) if j.get("visible"))
     ok = gates.guard("careers", kept, prev_visible, health, now)
-    links = [{"name": c["name"], "tier": c["tier"], "url": c["search_url"], "why": c.get("why", ""), "custom": c.get("custom", False)}
+    links = [{"name": c["name"], "tier": c["tier"], "url": c["search_url"], "why": c.get("why", ""), "custom": c.get("custom", False),
+              **({"owners": c["owners"]} if c.get("owners") else {})}
              for c in companies_all if c.get("ats") == "link" and c.get("search_url")]
     roster = [{"name": c["name"], "tier": c["tier"], "auto": c.get("ats") != "link", "custom": c.get("custom", False),
-               "why": c.get("why") or c.get("found", ""), "ats": c.get("ats")} for c in companies_all]
+               "why": c.get("why") or c.get("found", ""), "ats": c.get("ats"), **({"owners": c["owners"]} if c.get("owners") else {})}
+              for c in companies_all]
     if ok:
         save(path, {"updated": now, "jobs": kept, "health": health, "links": links, "custom": custom_cache, "companies": roster})
     else:

@@ -44,6 +44,25 @@ Free tiers only: GitHub Actions (free for public repos; a private copy uses abou
 
 From then on it runs, refreshes and redeploys by itself.
 
+## Profiles: Daksh, Aruja, Lubhana
+
+One app, three separate profiles. Each person signs in with **their own password** and gets their own:
+- resumes and match % / which-resume advice
+- 👍 / 👎 and "For you" learning
+- applications tracker
+- added companies (their jobs are shown only to whoever added the company)
+- profile: field, degree, graduation year, roles and cities. These decide eligibility (e.g. PhD-only roles) and job-site links.
+
+Nothing one person does changes what another sees. The job lists collected from public careers sites are shared. Only Daksh's profile has the Freelance side, the outreach companies and contacts, scam reports and the radar settings. Those are private to him, and the last two steer the shared collectors.
+
+**To open Aruja's and Lubhana's profiles:**
+1. In Render → career-hub → Environment, add `APP_PASSWORD_ARUJA` and `APP_PASSWORD_LUBHANA` (10+ characters each).
+2. Send each person their own password.
+
+Until a password is set, that profile can't be opened. Changing a password signs that person out everywhere.
+
+Storage: Daksh's files stay where they were. Aruja's and Lubhana's live under `users/aruja/…` and `users/lubhana/…` in the same private dataset.
+
 ## Good to know
 - **Backup timer:** GitHub's own schedule sometimes skips runs when GitHub is busy. With `GH_DISPATCH_TOKEN` set in Render (a fine-grained GitHub token for this repo only, permission *Actions: read and write*), the app starts the update itself when you open it and the data is over 7 hours old, and the Status tab gets **Update now** buttons.
 - **Sleep:** on Render's free plan the app sleeps after 15 minutes unused. Opening the link wakes it in about a minute. The collectors don't depend on it.

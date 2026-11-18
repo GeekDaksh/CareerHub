@@ -211,7 +211,7 @@ q.rl{display:block;color:var(--paper);font-size:13px;margin:2px 0 0 0;quotes:"�
     </div>
   </header>
   <main id="view"><div class="loading">Loading your hub…</div></main>
-  <footer class="foot"><span id="upd"></span><span>Fresher focus · official sources first · scams filtered · private to you</span></footer>
+  <footer class="foot"><span id="upd"></span><span>Fresher focus · official sources first · scams filtered · each profile private</span></footer>
 </div>
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status"></div>
@@ -225,6 +225,17 @@ const TABS = {
   freelance: [["today", "Today"], ["gigs", "Gigs"], ["ai", "AI tasks"], ["pipe", "Pipeline"], ["earn", "Earnings"], ["kit", "Toolkit"]],
 };
 const PAGES = ["settings", "safety", "status"];
+const OWNER_TABS = {career: TABS.career, freelance: TABS.freelance};
+const GUEST_TABS = {career: [["big", "Big companies"], ["jobs", "Startups & more"], ["resumes", "Resumes"], ["apps", "Applications"], ["sites", "Job sites"]]};
+const isOwner = () => !D || !D.user || D.user.owner;
+function applyProfile() {          // other profiles see only their own job-search tools (no freelance / outreach / reports)
+  const T2 = isOwner() ? OWNER_TABS : GUEST_TABS;
+  for (const k of Object.keys(TABS)) delete TABS[k];
+  Object.assign(TABS, T2);
+  document.querySelector('.switch [data-ws="freelance"]').hidden = !isOwner();
+  if (!TABS[S.ws] && !PAGES.includes(S.ws)) { S.ws = "career"; }
+  if (TABS[S.ws] && !TABS[S.ws].some((t) => t[0] === S.tab)) S.tab = TABS[S.ws][0][0];
+}
 
 /* ---------- helpers ---------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -261,21 +272,21 @@ const chips = (list, sel, group) => list.map((x) => `<button class="mini ${sel.i
 function toggleChip(group, v, all) {
   const cur = S.f[group] || all.slice();
   S.f[group] = cur.includes(v) ? cur.filter((x) => x !== v) : cur.concat(v);
-  store.set("f", S.f); render();
+  store.set("f:" + (S._user || "daksh"), S.f); render();
 }
 const fsel = (group, all) => S.f[group] && S.f[group].length ? S.f[group] : all;
 
 /* ---------- router ---------- */
 function go(ws, tab) { S.ws = ws; S.tab = tab; location.hash = ws + "/" + tab; render(); window.scrollTo({top: 0}); }
 function readHash() {
-  const [ws, tab] = (location.hash.slice(1) || "career/today").split("/");
+  const [ws, tab] = (location.hash.slice(1) || (isOwner() ? "career/today" : "career/big")).split("/");
   if (PAGES.includes(ws)) { S.ws = ws; S.tab = ws; return; }
   S.ws = TABS[ws] ? ws : "career"; S.tab = (TABS[S.ws].find((t) => t[0] === tab) || TABS[S.ws][0])[0];
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-ws],[data-tab],[data-go],[data-chip],[data-act]");
   if (!b) return;
-  if (b.dataset.ws) go(b.dataset.ws, "today");
+  if (b.dataset.ws) go(b.dataset.ws, TABS[b.dataset.ws] ? TABS[b.dataset.ws][0][0] : "today");
   else if (b.dataset.tab) go(S.ws, b.dataset.tab);
   else if (b.dataset.go) { S.ws = b.dataset.go; S.tab = b.dataset.go; location.hash = b.dataset.go; render(); }
   else if (b.dataset.chip) toggleChip(b.dataset.chip, b.dataset.v, JSON.parse(b.closest("[data-all]")?.dataset.all || "[]"));
@@ -319,7 +330,7 @@ function roleCard(r, compact) {
         <button class="mini ${s === "saved" ? "on" : ""}" data-act="role" data-id="${esc(r.id)}" data-s="saved">Save</button>
         <button class="mini" data-act="role" data-id="${esc(r.id)}" data-s="applied">Applied</button>
         <button class="mini" data-act="role" data-id="${esc(r.id)}" data-s="hidden" title="Hide">✕</button>
-        ${compact ? "" : `<button class="mini warnbtn" data-act="fb" data-kind="role" data-id="${esc(r.id)}" data-v="scam" title="Report this post as a scam">Report scam</button>
+        ${compact || !isOwner() ? "" : `<button class="mini warnbtn" data-act="fb" data-kind="role" data-id="${esc(r.id)}" data-v="scam" title="Report this post as a scam">Report scam</button>
         <button class="mini" data-act="fb" data-kind="role" data-id="${esc(r.id)}" data-v="senior" title="This job is really for experienced people">It's senior</button>
         ${r.level !== "entry" ? `<button class="mini" data-act="fb" data-kind="role" data-id="${esc(r.id)}" data-v="entry" title="This job is really entry-level">It's entry</button>` : ""}`}
       </span></div></article>`;
@@ -396,7 +407,7 @@ const ACT = {
   async savesettings() {
     const pick = (g) => [...document.querySelectorAll(`[data-set="${g}"].on`)].map((b) => b.dataset.v);
     const body = {main_sectors: pick("main_sectors"), other_sectors: pick("other_sectors"), locations: pick("locations"), roles: pick("roles"), gig_types: pick("gig_types")};
-    try { const r = await post("/api/settings", body); D.settings = r.settings; S.f = {}; store.set("f", {}); render(); toast("Saved — new searches use it on the next run"); }
+    try { const r = await post("/api/settings", body); D.settings = r.settings; S.f = {}; store.set("f:" + (S._user || "daksh"), {}); render(); toast("Saved — new searches use it on the next run"); }
     catch (e) { toast("Couldn't save settings", true); }
   },
   setchip(d, el) {
@@ -483,13 +494,13 @@ function careerJobs() {
     <p class="dim small">${list.length} roles</p>
     <div class="grid2">${list.slice(0, 120).map((r) => roleCard(r)).join("") || '<p class="empty">Nothing matches. Widen the filters or check Settings.</p>'}</div>`;
 }
-ACT.sortset = (d, el) => { S.f.sort = el.value; store.set("f", S.f); render(); };
-ACT.anyloc = () => { S.f.anyloc = !S.f.anyloc; store.set("f", S.f); render(); };
+ACT.sortset = (d, el) => { S.f.sort = el.value; store.set("f:" + (S._user || "daksh"), S.f); render(); };
+ACT.anyloc = () => { S.f.anyloc = !S.f.anyloc; store.set("f:" + (S._user || "daksh"), S.f); render(); };
 ACT.runnow = async (d) => { try { const r = await post("/api/refresh", {what: d.what}); toast(r.message, !r.ok); } catch (e) { toast("Couldn't start — try again", true); } };
-ACT.intl = () => { S.f.intl = !S.f.intl; store.set("f", S.f); render(); };
-ACT.focus = () => { S.f.focus = !S.f.focus; store.set("f", S.f); render(); };
-ACT.allroles = () => { S.f.allroles = !S.f.allroles; store.set("f", S.f); render(); };
-ACT.foreign = () => { S.f.foreign = !S.f.foreign; store.set("f", S.f); render(); };
+ACT.intl = () => { S.f.intl = !S.f.intl; store.set("f:" + (S._user || "daksh"), S.f); render(); };
+ACT.focus = () => { S.f.focus = !S.f.focus; store.set("f:" + (S._user || "daksh"), S.f); render(); };
+ACT.allroles = () => { S.f.allroles = !S.f.allroles; store.set("f:" + (S._user || "daksh"), S.f); render(); };
+ACT.foreign = () => { S.f.foreign = !S.f.foreign; store.set("f:" + (S._user || "daksh"), S.f); render(); };
 
 function boardOf(prefix, cols, emptyMsg) {
   const items = Object.entries(T()).filter(([k, v]) => k.startsWith(prefix) && v.meta);
@@ -523,7 +534,7 @@ function careerCompanies() {
     ${list.map((c) => { const p = c.contacts[0] || {}; return `<tr class="click" data-act="company" data-key="${esc(c.key)}"><td>${esc(c.rank)}</td><td><b>${esc(c.company)}</b></td><td class="dim">${esc(c.tier)}</td><td>${esc(c.fields)}</td><td class="dim">${esc(c.city || "")}</td><td>${esc(c.fit || "")}</td><td>${esc(p.name || "—")}<br><span class="faint small">${esc(p.role || "")}</span></td><td>${p.email ? `<span class="score ${gradeCls(p.email_grade)}">${esc(String(p.email_grade).split(" ")[0])}</span> <span class="small">${esc(p.email)}</span>` : '<span class="faint">LinkedIn</span>'}</td><td>${esc(st("company:" + c.key, "to contact"))}</td></tr>`; }).join("") || '<tr><td colspan="9" class="empty">No companies yet. The job finder runs Monday and Thursday.</td></tr>'}
     </tbody></table></div>`;
 }
-ACT.cview = (d) => { S.f.cview = d.v; store.set("f", S.f); render(); };
+ACT.cview = (d) => { S.f.cview = d.v; store.set("f:" + (S._user || "daksh"), S.f); render(); };
 function companyDlg(key) {
   const c = D.companies.find((x) => x.key === key); if (!c) return;
   const opts = ["to contact", "contacted", "replied", "interview", "no reply"], cur = st("company:" + key, "to contact");
@@ -654,7 +665,31 @@ function freeKit() {
 }
 
 /* ---------- pages: GLOBAL ---------- */
+function profileSettings() {
+  const m = D.me || {}, c = D.catalog;
+  const set = (g, list, sel) => list.map((x) => `<button class="mini ${sel.includes(x) ? "on" : ""}" data-act="setchip" data-set="${g}" data-g="${g}" data-v="${esc(x)}">${esc(x)}</button>`).join("");
+  return `<div class="page-head"><h2>Your profile</h2><p>Only you see this profile — your resumes, likes, applications and companies are yours alone. Career Hub uses these details to hide jobs you can't apply to (for example PhD-only roles) and to build your job-site links.</p></div>
+    <div class="filters">
+      <div class="formrow">
+        <label class="field">Your field<input id="pField" maxlength="80" value="${esc(m.field || "")}" placeholder="e.g. Civil engineering, Data science"></label>
+        <label class="field">Highest degree (finished or in progress)<select id="pDeg" class="sel">
+          ${[["bachelor", "Bachelor's (B.Tech / BE / BSc …)"], ["master", "Master's (M.Tech / MS / MBA …)"], ["phd", "PhD"]].map(([v, l]) => `<option value="${v}" ${m.degree === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
+        <label class="field">Graduation year<input id="pYear" inputmode="numeric" maxlength="4" value="${esc(m.grad_year || "")}" placeholder="e.g. 2027"></label></div>
+      <div class="frow"><span class="lab">Roles</span>${set("roles", c.roles, m.roles || [])}</div>
+      <div class="frow"><span class="lab">Cities</span>${set("locations", c.cities.concat(c.remote), m.locations || [])}</div>
+    </div>
+    <div class="row"><button class="primary" data-act="saveprofile">Save profile</button><a class="ghost" href="/logout">Sign out / switch profile</a></div>`;
+}
+ACT.saveprofile = async () => {
+  const pick = (g) => [...document.querySelectorAll(`[data-set="${g}"].on`)].map((b) => b.dataset.v);
+  try {
+    await post("/api/profile", {field: $("#pField").value, degree: $("#pDeg").value, grad_year: $("#pYear").value.trim() || null,
+                                roles: pick("roles"), locations: pick("locations")});
+    toast("Saved"); await load(true);
+  } catch (e) { let m = "Couldn't save"; try { m = JSON.parse(e.message).detail || m; } catch (_) {} toast(m, true); }
+};
 function pageSettings() {
+  if (!isOwner()) return profileSettings();
   const s = D.settings, c = D.catalog;
   const set = (g, list, sel) => list.map((x) => `<button class="mini ${sel.includes(x) ? "on" : ""}" data-act="setchip" data-set="${g}" data-g="${g}" data-v="${esc(x)}">${esc(g === "gig_types" ? c.gig_types[x] : x)}</button>`).join("");
   return `<div class="page-head"><h2>Settings</h2><p>Is Career Hub specific to you? Yes. It's built around your profile: your skills and projects score every job and gig, and write your proposals and notes. Everything else is chosen here: sectors, cities, roles and gig types. The radars use your picks on their next run.</p></div>
@@ -706,9 +741,9 @@ function pageStatus() {
       <div class="kpi"><span class="k">Companies profiled</span><b>${esc(j.profiled ?? 0)}</b></div>
       <div class="kpi"><span class="k">Contacts</span><b>${esc(j.contacts ?? 0)}</b></div>
       <div class="kpi"><span class="k">Reliable emails (A/B)</span><b class="tA">${esc(j.key_contacts_with_reliable_email ?? 0)}</b></div></div>
-    <div class="bar-head"><h3>Update now</h3><span class="faint small">${D.refresh?.enabled ? "Runs on GitHub. The app also starts an update by itself when data is over 7 hours old." : "Set GH_DISPATCH_TOKEN in Render to turn this on."}</span></div>
+    ${!isOwner() ? "" : `<div class="bar-head"><h3>Update now</h3><span class="faint small">${D.refresh?.enabled ? "Runs on GitHub. The app also starts an update by itself when data is over 7 hours old." : "Set GH_DISPATCH_TOKEN in Render to turn this on."}</span></div>
     <div class="row"><button class="ghost" data-act="runnow" data-what="radar" ${D.refresh?.enabled ? "" : "disabled"}>Update gigs + jobs</button>
-      <button class="ghost" data-act="runnow" data-what="companies" ${D.refresh?.enabled ? "" : "disabled"}>Update companies</button></div>
+      <button class="ghost" data-act="runnow" data-what="companies" ${D.refresh?.enabled ? "" : "disabled"}>Update companies</button></div>`}
     <div class="row"><button class="ghost" data-act="refresh">Reload data</button><a class="ghost" href="/logout">Sign out</a>${D.github ? `<a class="ghost" href="https://github.com/${esc(D.github)}/actions" target="_blank" rel="noopener">Run logs ↗</a>` : ""}</div>`;
 }
 
@@ -841,9 +876,9 @@ function learnPanel(L) {
       "For you" becomes the default order after 10 reactions (fewer can mislead).</p>
     <button class="mini warnbtn" data-act="lreset">Forget everything it learned</button></details>`;
 }
-ACT.btoggle = (d, el) => { S.f[d.k] = el.checked; store.set("f", S.f); render(); };
-ACT.bco = (d) => { S.f.bco = d.n || ""; store.set("f", S.f); render(); window.scrollTo(0, 0); };
-document.addEventListener("toggle", (e) => { if (e.target.id === "copanel") { S.f.bcopen = e.target.open; store.set("f", S.f); } }, true);
+ACT.btoggle = (d, el) => { S.f[d.k] = el.checked; store.set("f:" + (S._user || "daksh"), S.f); render(); };
+ACT.bco = (d) => { S.f.bco = d.n || ""; store.set("f:" + (S._user || "daksh"), S.f); render(); window.scrollTo(0, 0); };
+document.addEventListener("toggle", (e) => { if (e.target.id === "copanel") { S.f.bcopen = e.target.open; store.set("f:" + (S._user || "daksh"), S.f); } }, true);
 ACT.react = async (d) => {
   const row = bigRows().find((x) => x.id === d.id);
   try { await post("/api/react", {id: d.id, r: d.r, reason: d.reason || null}); }
@@ -865,8 +900,8 @@ ACT.lreset = async () => {
 };
 function confirmTwice(k) { const now = Date.now(); const ok = S["_c" + k] && now - S["_c" + k] < 4000; S["_c" + k] = ok ? 0 : now; return ok; }
 document.addEventListener("input", (e) => { if (e.target.id === "bcq") { S.f.bcq = e.target.value; clearTimeout(S._bcq); S._bcq = setTimeout(() => { render(); const q = $("#bcq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
-ACT.bsort = (d, el) => { S.f.bsort = el.value; store.set("f", S.f); render(); };
-ACT.bmore = (d) => { S.f.bmore = {...(S.f.bmore || {}), [d.t]: true}; store.set("f", S.f); render(); };
+ACT.bsort = (d, el) => { S.f.bsort = el.value; store.set("f:" + (S._user || "daksh"), S.f); render(); };
+ACT.bmore = (d) => { S.f.bmore = {...(S.f.bmore || {}), [d.t]: true}; store.set("f:" + (S._user || "daksh"), S.f); render(); };
 document.addEventListener("input", (e) => { if (e.target.id === "bq") { S.f.bq = e.target.value; clearTimeout(S._bq); S._bq = setTimeout(() => { render(); const q = $("#bq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
 document.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.classList?.contains("jrow")) ACT.job(e.target.dataset); });
 
@@ -965,12 +1000,14 @@ async function load(fresh) {
   if (r.status === 401) { location.href = "/login"; return; }
   D = await r.json();
   D.tracker.items = D.tracker.items || {};
-  $("#who").textContent = "for " + D.profile.first_name;
+  if (S._user !== D.user.id) { S._user = D.user.id; S.f = store.get("f:" + D.user.id, {}); }   // filters are per profile
+  applyProfile();
+  readHash();
+  $("#who").innerHTML = `for ${esc(D.profile.first_name)} · <a href="/logout" class="faint">switch profile</a>`;
   $("#upd").textContent = `Big companies ${ago(D.careers?.updated) || "—"} · Jobs ${ago(D.roles_updated) || "—"} · Gigs ${ago(D.gigs_updated) || "—"}`;
   render();
 }
-S.f = store.get("f", {});
-readHash();
+S.f = {};
 load().catch(() => { $("#view").innerHTML = '<div class="loading">Couldn\'t load data. Refresh in a minute; the app may be waking up.</div>'; });
 </script>
 </body>
