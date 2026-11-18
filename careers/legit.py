@@ -14,8 +14,8 @@ from common import trust
 
 ATS_HOSTS = {"amazon": ["amazon.jobs"], "google": ["google.com"], "eightfold": [],
              "greenhouse": ["greenhouse.io"], "lever": ["jobs.lever.co"], "ashby": ["jobs.ashbyhq.com"],
-             "smartrecruiters": ["jobs.smartrecruiters.com"]}
-SEEN_FRESH_H = 36          # seen in the last collection runs → still open
+             "smartrecruiters": ["jobs.smartrecruiters.com"], "apple": ["jobs.apple.com"], "orc": []}
+SEEN_FRESH_H = 48          # seen in the last collection runs → still open (sites are refreshed in rotation)
 CLOSED_AFTER_D = 4         # not seen for this long → probably closed (kept a few days, then dropped)
 
 
@@ -34,6 +34,8 @@ def official_hosts(c):
         hs.append(f"{c['tenant']}.{c['wd']}.myworkdayjobs.com")
     if c.get("ats") == "eightfold":
         hs.append(host(c["base"]))
+    if c.get("ats") == "orc":
+        hs.append(c["host"])
     hs += c.get("domains", [])
     return hs
 
@@ -53,6 +55,11 @@ def official(job, company, last_seen=None, now=None):
     checks, p = [], 70
     checks.append({"ok": True, "label": "From the company's own careers system",
                    "detail": f"returned by {company['name']}'s {job.get('ats') or company.get('ats')} job list, not a job board or repost"})
+    if company.get("guessed"):
+        p -= 15
+        checks.append({"ok": False, "label": "Company's job board was found by its NAME only",
+                       "detail": f"a board called '{company.get('slug')}' exists — check it's really {company['name']} "
+                                 "(add the careers page link to make it certain)"})
     if host_ok(job.get("url"), official_hosts(company)):
         p += 25
         checks.append({"ok": True, "label": "Link is on the company's official site",

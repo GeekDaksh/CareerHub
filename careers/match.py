@@ -110,8 +110,10 @@ def skills_in(text, implied=False):
 def sections(desc):
     """Split a job description into required / preferred / other text by its headings (best effort)."""
     d = str(desc or "")[:8000]
-    marks = sorted([(m.start(), "req") for m in REQ_HEAD.finditer(d)] + [(m.start(), "pref") for m in PREF_HEAD.finditer(d)]
-                   + [(m.start(), "other") for m in OTHER_HEAD.finditer(d)])
+    pref = [(m.start(), m.end()) for m in PREF_HEAD.finditer(d)]
+    # "qualifications" inside "Preferred qualifications" is NOT a required heading
+    req = [(m.start(), "req") for m in REQ_HEAD.finditer(d) if not any(a <= m.start() < b for a, b in pref)]
+    marks = sorted(req + [(a, "pref") for a, _ in pref] + [(m.start(), "other") for m in OTHER_HEAD.finditer(d)])
     parts = {"req": "", "pref": "", "other": ""}
     if not marks:
         parts["other"] = d

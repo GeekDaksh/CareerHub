@@ -53,5 +53,15 @@ chk(env["APP_PASSWORD"].get("sync") is False and env["HF_TOKEN"].get("sync") is 
 chk(env["SESSION_SECRET"].get("generateValue") is True, "render.yaml: session secret is random, made by Render")
 chk("uvicorn server:app" in svc["startCommand"] and "PYTHONPATH=.." in svc["startCommand"] and svc["healthCheckPath"] == "/healthz",
     "render.yaml: starts the same server the tests use, with a health check")
+# every Python file must compile on the Python the scheduled runs use (3.11) — a 3.12-only f-string once broke a run
+import py_compile, subprocess  # noqa: E401,E402
+files = subprocess.run(["git", "ls-files", "*.py"], cwd=ROOT, capture_output=True, text=True).stdout.split()
+bad = []
+for f in files:
+    try:
+        py_compile.compile(os.path.join(ROOT, f), doraise=True)
+    except py_compile.PyCompileError as e:
+        bad.append(f"{f}: {str(e)[:80]}")
+chk(not bad, f"all {len(files)} Python files compile on Python {sys.version_info.major}.{sys.version_info.minor} {bad[:3]}")
 print("\nFAILURES:", FAILS)
 sys.exit(1 if FAILS else 0)

@@ -8,6 +8,9 @@ PROFILE = {
     "name": "Daksh Patil",
     "first_name": "Daksh",
     "intro": "a final-year B.Tech AI student at NMIMS MPSTME, Mumbai (graduating 2027)",
+    # eligibility (careers/eligible.py): roles needing a PhD / Master's, or limited to other graduation years, are hidden
+    "degree": "bachelor",          # bachelor | master | phd
+    "grad_year": 2027,
     "headline": "AI/ML engineer — Python, PyTorch, LLM apps (LangGraph, RAG), computer vision, optimisation",
     "skills": ["Python", "PyTorch", "scikit-learn", "TensorFlow", "LangGraph", "FAISS",
                "Bayesian optimization", "BoTorch", "computer vision", "reinforcement learning",

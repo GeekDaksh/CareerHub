@@ -144,5 +144,32 @@ Daksh has four buttons: **Report scam**, **Not a scam**, **It's senior** and **I
   - Tests prove that the advice names only skills in the job, quotes only real resume lines, and ignores instructions planted in a job post.
 - **Not measured yet.** Match % has no human-judged benchmark, because there are no real resumes yet. **Next:** once Daksh uploads resumes, label 50 job–resume pairs as good, okay or poor fit, and calibrate.
 
+## 9c. Big companies, round 2 (2026-11-18): coverage, robots, eligibility, learning
+- **Why only Amazon + Google showed up.** The scheduled runs posted their summaries as GitHub notices, and these showed the cause:
+  - Workday answered **429 Too Many Requests** to 9–14 of 30 companies every run, even for robots.txt and even with requests 1.5 s apart.
+  - Microsoft failed with 429 once.
+  - Meta, Apple and Netflix were links only.
+- **Fixes for the blocks.**
+  - Requests are paced per site.
+  - On 429, a company rests for 6 → 12 → 24 h. Workday is never retried in the same run.
+  - At most 6 Workday sites per run, refreshed oldest-first.
+  - Search words rotate.
+  - Jobs from a company that couldn't be re-checked are kept up to 14 days, marked "not re-checked".
+- **Robots audit.** Python's built-in robots reader takes the *first* matching line, but the standard (RFC 9309) says the *longest* match wins. That changed real verdicts:
+  - Microsoft allows `/api/pcsx`, so it stays.
+  - Google forbids its search-results pages, so it is now a link. It had been read before without any robots check. That was a mistake, now fixed.
+  - SmartRecruiters' API forbids all bots except LinkedIn's, so Bosch, ServiceNow, Freshworks and Visa are links.
+  - Every run now checks each company's robots.txt with a standard reader (`careers/robots.py`), so a rule change is obeyed at once.
+- **Added.**
+  - Apple (its search page carries the data; there is no robots.txt).
+  - JPMorgan and Oracle (Oracle Recruiting Cloud).
+  - Mastercard, Citi, Morgan Stanley, Deutsche Bank, PayPal and Fidelity (Workday).
+  - A "Finance & payments" group.
+  - Meta needs written permission and Goldman / Netflix disallow bots, so they stay links.
+- **Your own companies.** You add a name or a careers link. Links are matched only against known job-system patterns, and the collector builds the API address itself, so a pasted link can't make it fetch arbitrary servers. This was tested with 6 tricky links. A board found by name only gets a lower "real" score and a "check it's the right company" warning (red-team finding).
+- **Eligibility.** 50 / 50 on a frozen hand-labelled set. Writing it found a bug that affected every section-based feature: "qualifications" inside "Preferred qualifications" was treated as a required heading. It was fixed at the source, which also corrects resume-match weights.
+- **Learning.** The simulated test and the break test are in the README. The break test is why the default order only switches to "For you" after 10 reactions.
+- **Process notes.** `tests/test_deploy.py` now compiles every file on the CI Python, after a 3.12-only f-string broke one probe run. Commits are authored as GeekDaksh only.
+
 ## 10. AI tool use
 Claude drafted all code, tests and documents. Every number in this report comes from a script in `eval/` and was re-run before writing. The bugs found by gates, the loop and the red team were fixed in separate commits, each with its reason.

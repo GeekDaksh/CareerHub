@@ -221,7 +221,7 @@ def google(c, queries=QUERIES[:6], pages=2):
 
 
 # ---------------------------------------------------------------- Eightfold (Microsoft)
-def eightfold(c, queries=None):
+def eightfold(c, queries=None, details=12):
     out = {}
     base, domain = c["base"], c["domain"]
     for q in queries or run_queries():
@@ -237,6 +237,19 @@ def eightfold(c, queries=None):
                 url = base + url
             out[x.get("id")] = _job(c["name"], x.get("id"), x.get("name") or x.get("title"), url, locs,
                                     x.get("postedTs") or x.get("t_create"), x.get("job_description") or "", "", "eightfold")
+    fetched = 0                      # the list has no descriptions: fetch them (allowed path /api/pcsx), new jobs only
+    for jid, j in out.items():
+        if fetched >= details or j["desc"] or j["id"] in c.get("_known", ()):
+            continue
+        fetched += 1
+        try:
+            dd = cget(f"{base}/api/pcsx/position_details", params={"position_id": jid, "domain": domain, "hl": "en"})
+            d2 = dd.get("data") or dd
+            text = d2.get("jobDescription") or d2.get("job_description") or d2.get("description") or ""
+            if text:
+                j["desc"] = strip_html(text, 6000)
+        except Exception:
+            pass
     return list(out.values())
 
 

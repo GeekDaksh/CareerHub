@@ -4,7 +4,7 @@ A self-running job and freelance radar: one web app with two separate sides, **C
 
 | Side | What you get | Refreshed |
 |---|---|---|
-| **Big companies** (Career side, first tab) | Vacancies read straight from **30 companies' own careers sites** — Google, Amazon, Microsoft (FAANG+), then NVIDIA, Salesforce, Adobe, Intel, Micron, HP, Applied Materials, Analog Devices, Cadence, Workday, Bosch, ServiceNow, Databricks, Rubrik, Airbnb, Zscaler, GitLab, Elastic, MongoDB, Datadog…, then Freshworks, Meesho, CRED, Sarvam AI. Apple, Meta, Netflix, Qualcomm, Dell, Atlassian, Flipkart and others forbid automated reading, so they get official search links instead. Each job gets: **role family** (GenAI / CV / ML / research / data / software / hardware…), **level and fresher fit**, a **"how sure it's real" %** with every check shown, your **match % per resume**, **which resume to send**, and **what to put in it** (only skills you really have, quoting your own resume lines). Compact rows; click **Details** for the full picture. | 4× a day (companies rotate) |
+| **Big companies** (Career side, first tab) | Vacancies read straight from companies' **own careers sites**, in 4 groups. **FAANG+:** Amazon, Apple, Microsoft. **Big tech:** NVIDIA, Salesforce, Adobe, Intel, Oracle, Databricks, MongoDB… **Finance & payments:** JPMorgan Chase, Mastercard, Citi, Morgan Stanley, Deutsche Bank, PayPal, Fidelity. **India majors:** Meesho, CRED, Sarvam AI. Some sites forbid automated reading in their robots.txt (checked every run, by the standard): Google (search pages), Meta, Netflix, Goldman Sachs, Visa, Bosch, ServiceNow, Freshworks, Qualcomm… These get an official search link instead. **Add any company yourself** (name or careers-page link). Each job gets: **role type**, **level / fresher fit**, **eligibility** (PhD-only, Master's-only and other-batch roles are hidden, with the reason), a **"how sure it's real" %**, **match % per resume**, **which resume to send**, **what to put in it**, and a **"for you" score** learned from your 👍 / 👎 / Save / Applied, plus **More like this**. Compact rows; click **Details** for everything. | 4× a day (sites rotate) |
 | **Career** | Fresher / entry-level jobs from your target companies' careers pages, your **LinkedIn, Naukri, Internshala, Wellfound, Indeed…** job-alert emails, remote boards, the monthly HN "Who is hiring?" thread (remote, open to India), the job boards of remote-first global companies (GitLab, Canonical, Elastic, MongoDB, Datadog, Supabase, Zapier; edit `REMOTE_COMPANIES` in `config.py`) and public job pages. An **International only** filter shows jobs at companies abroad. Every job has a scam check, a "how to apply" guide, resume keywords and a referral contact. Plus an applications board, a company outreach list (graded work emails) and one-click filtered searches on every job site. | 4× a day (companies Mon + Thu) |
 | **Freelance** | Paid gigs (Freelancer.com, remote boards incl. Working Nomads, the HN freelancer thread). Gigs with a stated $/€/£ budget show the amount and a **Pays in USD** tag, with a filter with scams, non-India and low-pay removed, proposal drafts, AI-task platforms, a pipeline board, an earnings log against your goal, and a toolkit. | 4× a day |
 | **Morning email** | 3 jobs to apply to, the best new gigs, 2 startups to email, 1 AI platform | daily ~08:15 IST |
@@ -87,6 +87,25 @@ kept apart as a blind test. The classifier is plain rules you can read (`careers
   - Team names can fool it: "Prime Video" made about 7 of 2,002 jobs look like computer vision. The fix didn't pass the accept rule, so it stays off.
 - **"How sure it's real".** This is a rule score, not a measured probability. A job that comes from the company's own careers system, at that company's own web address, gets 95–99 %. A look-alike address or scam words drop it below 55 %, and then it's hidden.
 - **Resume match.** It is the share of the job's skills that your resume shows: title ×3, required ×2, other ×1. If the post names fewer than 3 skills, no % is shown. No AI writes the advice, so text inside a job post can't steer it. Resumes are kept as text only, in your private data store.
+
+## Big companies: eligibility and learning (measured)
+
+**Eligibility** (`careers/eligible.py`). It is tested on 50 real job posts that mention PhD, Master's or graduation years. They were hand-labelled before the rules were written and are hash-locked in `eval/careers/eligibility.jsonl`.
+- **Result:** 50 / 50 right. All 12 jobs a 2027 B.Tech can't apply to were hidden, and none of the 38 open ones were.
+- **Catch:** n is small, so the 95 % range for "open jobs wrongly hidden" is 0–8 %. The posts were also scored after the rules had been fixed twice on these same cases (the heading bug and the "degree in" bug). The fixes were general, but this is not a blind test.
+- **Profile:** your degree and graduation year live in `config.py` (`degree`, `grad_year`).
+
+**For-you learning** (`careers/learn.py`). This is plain counting: how much more often a feature appears in jobs you liked than in jobs overall. Every score lists its reasons.
+- **Simulated test** (`eval/careers/learn_sim.py`). Simulated users with a hidden taste react to N real jobs, and the learner ranks the *other* jobs. On the AUC scale, 1.0 means a perfect ranking and 0.5 means random.
+
+| After | GenAI/CV fresher taste | Hardware taste | Data roles taste |
+|---|---|---|---|
+| 5 reactions | 0.85 (0.72–0.92) | 0.94 | 0.94 |
+| 10 reactions | 0.91 (0.86–0.95) | 0.96 | 0.97 |
+| 40 reactions | 0.95 (0.92–0.98) | 0.98 | 0.98 |
+
+- **Break test.** With 20 % mistaken clicks, the average after 10 reactions was 0.82, but the worst split was 0.44, worse than random. So "For you" only becomes the default order after **10 reactions**. Every reaction can be undone, and "Forget everything" resets it.
+- **Honest limit.** The simulated tastes are clean rules over the same features the learner sees, so real use will be noisier. After 10 real reactions, the app shows a self-check on your own reactions (leave one out: where would it have ranked that job?).
 
 ## For developers
 

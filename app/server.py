@@ -22,6 +22,8 @@ from common import feedback as FB
 from common import settings as SETTINGS
 from common import trust
 from careers import match as MATCH
+from careers import learn as LEARN
+from careers import custom as CUSTOM
 from careers import resumes as RES
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -252,22 +254,81 @@ def resumes_doc():
     return jread("resumes/resumes.json", {"resumes": []})
 
 
+# ---------------------------------------------------------------- reactions (like / dislike / save / apply / hide)
+REACT = {"loaded": False, "data": {}, "timer": None}
+REACT_LOCK = threading.Lock()
+FLUSH_AFTER = 15            # seconds: many clicks → one write to the data store (HF limits commits per hour)
+
+
+def reactions():
+    with REACT_LOCK:
+        if not REACT["loaded"]:
+            REACT["data"] = jread("careerprefs/reactions.json", {}).get("reactions", {})
+            REACT["loaded"] = True
+        return REACT["data"]
+
+
+def _flush():
+    with REACT_LOCK:
+        data, REACT["timer"] = dict(REACT["data"]), None
+    write_bytes("careerprefs/reactions.json", json.dumps({"reactions": data}, ensure_ascii=False).encode(), "reactions")
+
+
+def _schedule_flush():
+    with REACT_LOCK:
+        if REACT["timer"] is None:
+            REACT["timer"] = threading.Timer(FLUSH_AFTER, _flush)
+            REACT["timer"].daemon = True
+            REACT["timer"].start()
+
+
+def model_for(jobs):
+    rs = list(reactions().values())
+    return LEARN.Model(rs, [LEARN.features(j) for j in jobs])
+
+
 def careers_view(resumes):
     doc = jread("careers/official.json", {})
     jobs = [j for j in doc.get("jobs", []) if j.get("visible") and j.get("family") != "Non-technical"]
     CAREERS["jobs"] = {j["id"]: j for j in jobs}
     CAREERS["doc"] = doc
     have = [(r["name"], MATCH.skills_in(r.get("text", ""), implied=True)) for r in resumes]
+    m = model_for(jobs)
+    CAREERS["model"] = m
+    react = reactions()
+    rs = [v for v in react.values() if v.get("r") in LEARN.SIGNAL]
+    key = (len(rs), max((v["at"] for v in rs), default=0), len(jobs))
+    if CAREERS.get("check_key") != key:          # honest self-check, only recomputed when something changed
+        CAREERS["check"] = LEARN.holdout_check(rs[-60:], [{"f": LEARN.features(x)} for x in jobs[:400]])
+        CAREERS["check_key"] = key
     rows = []
     for j in jobs:
         row = {k: j.get(k) for k in ROW_FIELDS}
         row["legit"] = {"pct": j["legit"]["pct"], "band": j["legit"]["band"], "open": j["legit"].get("still_open")}
         row["match"], row["best"] = MATCH.best_for(j.get("skills") or [], have) if have else (None, None)
         row["n_skills"] = len(j.get("skills") or [])
+        el = j.get("eligible") or {"ok": True}
+        row["elig"] = {"ok": el.get("ok", True), "why": el.get("why", "")}
+        row["fy"], why = m.score(LEARN.features(j))
+        row["fy_why"] = [f"{x['sign']} {x['text']}" for x in why]
+        row["r"] = (react.get(j["id"]) or {}).get("r")
         rows.append(row)
     hidden_nt = sum(1 for j in doc.get("jobs", []) if j.get("family") == "Non-technical")
-    return {"rows": rows, "updated": doc.get("updated"), "links": doc.get("links", []), "health": doc.get("health", {}),
-            "nontech_hidden": hidden_nt}
+    mine = jread("careerprefs/companies.json", {}).get("companies", [])
+    roster = {c["name"]: c for c in doc.get("companies", [])}
+    health = doc.get("health", {})
+    companies = []
+    for name, c in roster.items():
+        h = health.get(name) or {}
+        companies.append({**c, "count": sum(1 for j in jobs if j["company"] == name), "ok": h.get("ok"), "error": h.get("error", "")})
+    for e in mine:                                   # added in the app, not collected yet
+        if e["name"] not in roster:
+            companies.append({"name": e["name"], "tier": e.get("tier"), "custom": True, "auto": None, "count": 0,
+                              "why": "waiting for the next update (it looks for this company's job list then)"})
+    learn = m.summary()
+    learn["check"] = CAREERS.get("check")
+    return {"rows": rows, "updated": doc.get("updated"), "links": doc.get("links", []), "health": health,
+            "nontech_hidden": hidden_nt, "companies": companies, "mine": mine, "learn": learn}
 
 
 def build():
@@ -509,7 +570,98 @@ def job_detail(id: str):
     resumes = resumes_doc().get("resumes", [])
     adv = MATCH.advise(j, resumes)
     out = {k: j.get(k) for k in ROW_FIELDS + ["family_evidence", "level_evidence", "desc", "ats"]}
-    return {**out, "legit": j["legit"], "advice": adv}
+    m = CAREERS.get("model") or model_for(list(CAREERS["jobs"].values()))
+    fy, why = m.score(LEARN.features(j))
+    disliked = {k for k, v in reactions().items() if v.get("r") in ("dislike", "hidden")}
+    senior_ok = j.get("fresher_fit") == "too senior"
+    seen, cands = {(j["company"], j["title"].lower())}, []
+    for x in CAREERS["jobs"].values():      # same rules as the list: eligible, your level, not disliked, no repeats
+        k = (x["company"], x["title"].lower())
+        if k in seen or x["id"] in disliked or not (x.get("eligible") or {}).get("ok", True) \
+                or (x.get("fresher_fit") == "too senior" and not senior_ok):
+            continue
+        seen.add(k)
+        cands.append((x["id"], LEARN.features(x)))
+    sim = [CAREERS["jobs"][i] for i in m.similar(LEARN.features(j), cands)]
+    return {**out, "legit": j["legit"], "advice": adv, "eligible": j.get("eligible") or {"ok": True},
+            "fy": fy, "fy_why": why, "r": (reactions().get(j["id"]) or {}).get("r"),
+            "similar": [{k: x.get(k) for k in ("id", "company", "title", "family", "fresher_fit", "location")} for x in sim]}
+
+
+@app.post("/api/react")
+async def react(req: Request):
+    b = await req.json()
+    jid, r, reason = str(b.get("id") or "")[:200], b.get("r"), b.get("reason")
+    if r not in list(LEARN.SIGNAL) + ["none"] or (reason is not None and reason not in LEARN.REASONS):
+        raise HTTPException(400, "unknown reaction")
+    payload()
+    j = CAREERS["jobs"].get(jid)
+    data = reactions()
+    with REACT_LOCK:
+        if r == "none":
+            data.pop(jid, None)
+        else:
+            if not j and jid not in data:
+                raise HTTPException(404, "job not found")
+            prev = data.get(jid) or {}
+            data[jid] = {"r": r, "reason": reason, "at": time.time(),
+                         "f": LEARN.features(j) if j else prev.get("f", []),
+                         "title": (j or prev).get("title", "")[:120], "company": (j or prev).get("company", "")[:60]}
+            if len(data) > LEARN.MAX_REACTIONS:              # keep the newest
+                for k in sorted(data, key=lambda k: data[k]["at"])[:len(data) - LEARN.MAX_REACTIONS]:
+                    data.pop(k)
+    _schedule_flush()
+    with LOCK:
+        _cache["at"] = 0
+    return {"ok": True}
+
+
+@app.post("/api/learn/reset")
+async def learn_reset(req: Request):
+    b = await req.json()
+    if b.get("confirm") != "reset":
+        raise HTTPException(400, "send confirm=reset")
+    with REACT_LOCK:
+        REACT["data"] = {}
+    _flush()
+    with LOCK:
+        _cache["at"] = 0
+    return {"ok": True}
+
+
+def _save_companies(lst):
+    write_bytes("careerprefs/companies.json", json.dumps({"companies": lst}, ensure_ascii=False).encode(), "companies")
+    with LOCK:
+        _cache["at"] = 0
+
+
+@app.post("/api/company")
+async def company_add(req: Request):
+    b = await req.json()
+    try:
+        e = CUSTOM.clean(b.get("name"), b.get("url"), b.get("tier") or "Big tech")
+    except CUSTOM.Bad as ex:
+        raise HTTPException(400, str(ex))
+    from careers import registry as REG
+    if any(c["name"].lower() == e["name"].lower() for c in REG.CANDIDATES):
+        raise HTTPException(400, f"{e['name']} is already in the list — search for it under Companies")
+    lst = [c for c in jread("careerprefs/companies.json", {}).get("companies", []) if c["name"].lower() != e["name"].lower()]
+    if len(lst) >= CUSTOM.MAX_COMPANIES:
+        raise HTTPException(400, f"up to {CUSTOM.MAX_COMPANIES} companies — remove one first")
+    lst.append({**e, "added": time.time()})
+    _save_companies(lst)
+    return {"ok": True, "name": e["name"]}
+
+
+@app.post("/api/company/delete")
+async def company_delete(req: Request):
+    b = await req.json()
+    lst = jread("careerprefs/companies.json", {}).get("companies", [])
+    keep = [c for c in lst if c["name"] != str(b.get("name") or "")]
+    if len(keep) == len(lst):
+        raise HTTPException(404, "not one of your companies")
+    _save_companies(keep)
+    return {"ok": True}
 
 
 def _save_resumes(lst, msg):

@@ -2,6 +2,7 @@
 and the server endpoints (incl. attacks).   python tests/test_careers.py"""
 import base64
 import hashlib
+import re
 import io
 import json
 import os
@@ -167,17 +168,18 @@ k = R.run(now=now, collect=fake(jobs_for(range(20))))
 doc = json.load(open(os.path.join(WORK, "careers", "official.json")))
 chk(len(doc["jobs"]) == 20 and all(j["legit"]["pct"] >= 95 for j in doc["jobs"]), "pipeline: 20 jobs stored, all very likely real")
 chk(all(j["skills"] and "family" in j and "fresher_fit" in j for j in doc["jobs"]), "pipeline: each job classified + skills precomputed")
-chk(any(l["name"] == "Apple" for l in doc["links"]), "link-only companies listed (Apple, Meta…)")
+chk(any(l["name"] == "Meta" and l["why"] for l in doc["links"]), "link-only companies listed with the reason (Meta…)")
+chk(any(c["name"] == "Apple" and c["auto"] for c in doc["companies"]), "Apple is read automatically now")
 R.run(now=now + 3600, collect=fake(jobs_for(range(6), desc="")))
 doc = json.load(open(os.path.join(WORK, "careers", "official.json")))
 chk(len(doc["jobs"]) == 20, "jobs not seen this run are kept for a while (company may not have been refreshed)")
 chk(all(len(j["desc"]) > 10 for j in doc["jobs"]), "a later run with no description keeps the earlier description")
-R.run(now=now + 5 * 86400, collect=fake(jobs_for(range(6))))
+R.run(now=now + 8 * 86400, collect=fake(jobs_for(range(6))))
 doc = json.load(open(os.path.join(WORK, "careers", "official.json")))
-chk(len(doc["jobs"]) == 6, "jobs not seen for days are dropped as closed")
+chk(len(doc["jobs"]) == 6, "search-site jobs not seen for over a week (company re-read OK) are dropped as closed")
 evil = jobs_for(["x"])
 evil[0]["url"] = "javascript:alert(1)"
-R.run(now=now + 5 * 86400 + 60, collect=fake(jobs_for(range(6)) + evil))
+R.run(now=now + 8 * 86400 + 60, collect=fake(jobs_for(range(6)) + evil))
 doc = json.load(open(os.path.join(WORK, "careers", "official.json")))
 chk(len(doc["jobs"]) == 6 and not any(j["id"].endswith(":x") for j in doc["jobs"]),
     "javascript: link → job dropped, the rest still saved")
@@ -190,15 +192,143 @@ def broken(cs, h, n, b, known):
 
 
 try:
-    R.run(now=now + 5 * 86400 + 120, collect=broken)
+    R.run(now=now + 8 * 86400 + 120, collect=broken)
 except Exception:
     pass
 after = json.load(open(os.path.join(WORK, "careers", "official.json")))
 chk(len(after["jobs"]) == 6 and not after["health"].get("Output check", {}).get("ok", True),
     "gate failure (bad item) → last good list kept, failure shown in Status")
-order = R.order(registry.CANDIDATES, {"Google": {"ok_at": now}, "Amazon": {"ok_at": now - 9999}})
-chk(order[0]["name"] not in ("Google", "Amazon") and order.index(C["Amazon"]) < order.index(C["Google"]),
+# keep rules
+G = {"company": "Databricks", "last_seen": now - 5 * 86400}
+chk(not R.keep(G, C["Databricks"], {"Databricks": {"ok_at": now}}, now), "whole-board site re-read without the job → closed")
+chk(R.keep(dict(G, company="Amazon"), C["Amazon"], {"Amazon": {"ok_at": now}}, now), "search-based site: kept up to 7 days")
+chk(R.keep(dict(G, company="NVIDIA", last_seen=now - 10 * 86400), C["NVIDIA"], {"NVIDIA": {"ok_at": now - 11 * 86400}}, now),
+    "company blocked / not re-checked: jobs kept up to 14 days")
+chk(not R.keep(dict(G, company="NVIDIA", last_seen=now - 15 * 86400), C["NVIDIA"], {"NVIDIA": {"ok_at": 0}}, now),
+    "…but not forever")
+# politeness
+S._robots.clear()
+S._robots["https://x.example"] = ("rules", "User-agent: *\nDisallow: /api/\nAllow: /api/public$\n")
+chk(not S.robots_allowed("https://x.example/api/jobs")[0] and S.robots_allowed("https://x.example/api/public")[0],
+    "robots gate follows the standard (longest rule wins)")
+S._robots["https://down.example"] = ("down", None)
+chk(not S.robots_allowed("https://down.example/a")[0], "robots.txt unreachable → skip (safe side)")
+health = {}
+S._robots["https://boards-api.greenhouse.io"] = ("rules", "User-agent: *\nDisallow: /\n")
+S.collect([C["Databricks"]], health, now)
+chk(not health["Databricks"]["ok"] and "robots" in health["Databricks"]["error"], "a company whose robots.txt forbids us is skipped and Status says why")
+S._robots.clear()
+
+
+class E429(Exception):
+    class response:
+        status_code, headers = 429, {}
+
+
+def boom(c, **k):
+    raise E429()
+
+
+S.CONNECTORS["_t"] = boom
+S._robots["https://t.example"] = ("none", None)
+S.api_url_orig = S.api_url
+health = {}
+S.api_url = lambda c: "https://t.example/x"
+S.collect([{"name": "T", "ats": "_t", "tier": "Big tech"}], health, now)
+chk(health["T"].get("backoff_until", 0) > now and "too many" in health["T"]["error"], "told 'too many requests' → company rests, retried a later run")
+S.collect([{"name": "T", "ats": "_t", "tier": "Big tech"}], health, now + 60)
+chk("resting" in health["T"]["error"], "while resting, the company isn't contacted at all")
+S.api_url = S.api_url_orig
+del S.CONNECTORS["_t"]
+from careers import registry as REG  # noqa: E402
+wd = [c for c in R.order(REG.CANDIDATES, {}) if c["ats"] == "workday"]
+chk(len(wd) <= R.WORKDAY_PER_RUN, f"at most {R.WORKDAY_PER_RUN} Workday sites per run ({len(wd)})")
+chk(any(c["name"] == "Google" and c["ats"] == "link" for c in REG.CANDIDATES), "Google search pages not read (robots.txt forbids them)")
+chk(any(c["name"] == "Microsoft" and c["ats"] == "eightfold" for c in REG.CANDIDATES), "Microsoft read (robots.txt allows /api/pcsx)")
+
+# custom companies: link parsing is strict (no arbitrary servers)
+from careers import custom as CU  # noqa: E402
+chk(CU.from_url("https://mastercard.wd1.myworkdayjobs.com/en-US/CorporateCareers/job/x") ==
+    {"ats": "workday", "tenant": "mastercard", "wd": "wd1", "site": "CorporateCareers"}, "Workday link understood")
+chk(CU.from_url("https://job-boards.greenhouse.io/anthropic") == {"ats": "greenhouse", "slug": "anthropic"}, "Greenhouse link understood")
+chk(CU.from_url("https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs") ==
+    {"ats": "orc", "host": "jpmc.fa.oraclecloud.com", "site": "CX_1001"}, "Oracle link understood")
+for evil_url in ["https://evil.com/x.myworkdayjobs.com/a", "https://x.wd1.myworkdayjobs.com.evil.com/a",
+                 "https://169.254.169.254.fa.oraclecloud.com.evil/hcmUI/CandidateExperience/en/sites/A",
+                 "http://jobs.lever.co/x", "https://jobs.lever.co/../../etc", "https://localhost.wd1.myworkdayjobs.com@evil.com/x"]:
+    cfg = CU.from_url(evil_url)
+    chk(cfg is None or all(re.fullmatch(r"[A-Za-z0-9_.-]+", str(v)) for v in cfg.values()),
+        f"look-alike / tricky link can't steer the collector: {evil_url[:45]}")
+for bad_name in ["<script>", "", "a" * 61]:
+    try:
+        CU.clean(bad_name)
+        chk(False, f"bad company name {bad_name[:10]!r} rejected")
+    except CU.Bad:
+        chk(True, f"bad company name {bad_name[:10]!r} rejected")
+try:
+    CU.clean("Visa", "javascript:alert(1)")
+    chk(False, "non-https careers link rejected")
+except CU.Bad:
+    chk(True, "non-https careers link rejected")
+found = CU.discover({"name": "Sarvam AI"}, lambda ats, slug: 50 if (ats, slug) == ("ashby", "sarvamai") else 0)
+chk(found["ats"] == "ashby" and found["slug"] == "sarvamai", "company found from its name on Ashby")
+chk(CU.discover({"name": "Nowhere Co"}, lambda a, s: 0)["ats"] == "link", "not found → link only, with a hint")
+gl = legit.official({"url": "https://boards.greenhouse.io/visa/jobs/1", "title": "x"}, {"name": "Visa", "ats": "greenhouse", "slug": "visa",
+                                                                                   "guessed": True}, now, now)
+chk(gl["pct"] < 95 and any("NAME only" in c["label"] for c in gl["checks"]), f"board found by name only → lower 'real' score + warning ({gl['pct']}%)")
+os.makedirs(os.path.join(WORK, "careerprefs"), exist_ok=True)
+json.dump({"companies": [{"name": "Anthropic", "url": "https://job-boards.greenhouse.io/anthropic", "tier": "Startup"},
+                         {"name": "Amazon", "url": "", "tier": "Big tech"}]}, open(os.path.join(WORK, "careerprefs", "companies.json"), "w"))
+mine, cache = R.custom_companies({}, now, board_size=lambda a, s: 0)
+chk([c["name"] for c in mine] == ["Anthropic", "Amazon"] and mine[0]["ats"] == "greenhouse" and mine[0]["custom"],
+    "your companies are resolved and collected")
+import re as _re  # noqa: E402,F401
+
+order = R.order(registry.CANDIDATES, {"Apple": {"ok_at": now}, "Amazon": {"ok_at": now - 9999}})
+chk(order[0]["name"] not in ("Apple", "Amazon") and order.index(C["Amazon"]) < order.index(C["Apple"]),
     "companies refreshed longest ago go first (rotation)")
+
+# ---------------------------------------------------------------- eligibility
+from careers import eligible as EL  # noqa: E402
+EG = lambda t, d="": EL.check({"title": t, "desc": d}, "bachelor", 2027)
+chk(not EG("Software Engineer, PhD, Early Career")["ok"], "PhD in the title → not eligible")
+chk(not EG("PhD Intern, AI ML in Wireless")["ok"], "PhD internship → not eligible")
+chk(not EG("Applied Scientist", "Basic qualifications: - PhD, or Master's degree - Python")["ok"], "'PhD, or Master's' (no Bachelor's route) → not eligible")
+chk(EG("ML Engineer", "Minimum qualifications: Bachelor's degree or equivalent practical experience. Preferred qualifications: Master's degree or PhD.")["ok"],
+    "Master's / PhD only PREFERRED → eligible")
+chk(EG("Engineer", "Required: Bachelor's with 5+ years OR\n• Master's degree in EE with 3+ years")["ok"], "a Bachelor's route anywhere → eligible")
+chk(not EG("Graduate Engineer Trainee", "Requirements: B.Tech, 2025 graduates only")["ok"], "limited to the 2025 batch → not eligible (you: 2027)")
+chk(EG("SDE Intern", "Requirements: graduating in 2027, pursuing B.Tech")["ok"], "your batch (2027) → eligible")
+chk(EL.check({"title": "Research Scientist, PhD"}, "phd", 2027)["ok"], "a PhD holder's profile isn't filtered")
+r = EG("Applied Scientist", "Basic qualifications: - PhD, or Master's degree")
+chk(r["evidence"] and r["why"], "every 'not eligible' quotes the words it used")
+import subprocess  # noqa: E402
+out = subprocess.run([sys.executable, "-m", "eval.careers.measure_eligibility"], cwd=ROOT, capture_output=True, text=True).stdout
+acc = float(out.split()[1])
+chk(acc >= 0.9, f"eligibility on the frozen 50 hand-labelled cases: accuracy {acc:.2f} (gate ≥ 0.90)")
+
+# ---------------------------------------------------------------- learning
+from careers import learn as LE  # noqa: E402
+mk = lambda fam, co, lvl="fits", title="ML Engineer": {"family": fam, "company": co, "company_tier": "Big tech", "fresher_fit": lvl,
+                                                     "title": title, "specialties": [], "skills": []}
+bg = [LE.features(mk(f, c)) for f in ("GenAI / LLM", "Software Engineering", "Embedded / Hardware") for c in ("A", "B", "C")] * 5
+m = LE.Model([{"r": "like", "f": LE.features(mk("GenAI / LLM", "A"))}], bg)
+chk(not m.active and m.score(LE.features(mk("GenAI / LLM", "A")))[0] is None, f"needs {LE.MIN_REACTIONS} reactions before scoring")
+rs = [{"r": "like", "f": LE.features(mk("GenAI / LLM", "A"))}, {"r": "like", "f": LE.features(mk("GenAI / LLM", "B"))},
+      {"r": "dislike", "f": LE.features(mk("Embedded / Hardware", "C"))}]
+m = LE.Model(rs, bg)
+g, h = m.score(LE.features(mk("GenAI / LLM", "D")))[0], m.score(LE.features(mk("Embedded / Hardware", "D")))[0]
+chk(g > 50 > h, f"learns: liked role type ranks up ({g}), disliked role type ranks down ({h})")
+chk(any("GenAI" in x["text"] for x in m.score(LE.features(mk("GenAI / LLM", "D")))[1]), "every score says why")
+rs2 = rs + [{"r": "dislike", "reason": "company", "f": LE.features(mk("GenAI / LLM", "B"))}]
+m2 = LE.Model(rs2, bg)
+chk(m2.w.get("fam:GenAI / LLM", 0) > 0 and m2.w.get("co:B", 0) < m.w.get("co:B", 0),
+    "a dislike with reason 'Not this company' penalises the company, not the role type")
+chk(m.w.get("lvl:fits", 0) == 0 or abs(m.w["lvl:fits"]) < 0.5, "a feature every job has (level 'fits' here) learns ~nothing")
+sim = m.similar(LE.features(mk("GenAI / LLM", "A")), [("x", LE.features(mk("GenAI / LLM", "B"))), ("y", LE.features(mk("Embedded / Hardware", "C")))])
+chk(sim[0] == "x", "'More like this' puts the same role type first")
+big = [{"r": "like", "f": ["x"]}] * (LE.MAX_REACTIONS + 50)
+chk(len(LE.Model(big, bg).reactions) == LE.MAX_REACTIONS, "reaction history is capped")
 
 # ---------------------------------------------------------------- server
 os.environ.update(APP_PASSWORD="testpassword123", SESSION_SECRET="s" * 32, DATA_DIR=WORK)
@@ -236,6 +366,35 @@ chk(cl.post("/api/resume", json={"name": "one more", "filename": "cv.txt", "data
     f"at most {RES.MAX_RESUMES} resumes")
 chk(cl.post("/api/resume/delete", json={"name": "ML"}, headers=H).status_code == 200, "resume delete works")
 chk(cl.post("/api/resume/delete", json={"name": "ML"}, headers=H).status_code == 404, "deleting twice → 404")
+# reactions, companies
+server.FLUSH_AFTER = 0.05
+r0 = cl.post("/api/react", json={"id": jid, "r": "like"}, headers=H)
+chk(r0.status_code == 200, "like saved")
+chk(cl.post("/api/react", json={"id": jid, "r": "love"}, headers=H).status_code == 400, "unknown reaction refused")
+chk(cl.post("/api/react", json={"id": jid, "r": "dislike", "reason": "<script>"}, headers=H).status_code == 400, "unknown dislike reason refused")
+chk(cl.post("/api/react", json={"id": "nope", "r": "like"}, headers=H).status_code == 404, "reacting to an unknown job → 404")
+chk(cl.post("/api/react", json={"id": jid, "r": "like"}).status_code == 403, "reactions need the app's own header")
+time.sleep(0.3)
+saved = json.load(open(os.path.join(WORK, "careerprefs", "reactions.json")))
+chk(jid in saved["reactions"] and saved["reactions"][jid]["f"], "reaction written to the private store (with the job's features)")
+d = cl.get("/api/data").json()
+chk([x for x in d["careers"]["rows"] if x["id"] == jid][0]["r"] == "like" and "learn" in d["careers"], "page shows your reaction + what it learned")
+det = cl.get("/api/job", params={"id": jid}).json()
+chk("similar" in det and "eligible" in det, "details include 'More like this' and eligibility")
+chk(cl.post("/api/learn/reset", json={}, headers=H).status_code == 400, "reset needs an explicit confirm")
+chk(cl.post("/api/learn/reset", json={"confirm": "reset"}, headers=H).status_code == 200 and not server.reactions(), "reset forgets everything")
+chk(cl.post("/api/company", json={"name": "Amazon", "url": "", "tier": "Big tech"}, headers=H).status_code == 400,
+    "a company that's already built in is refused with a clear message")
+chk(cl.post("/api/company", json={"name": "Qualcomm", "url": "", "tier": "Big tech"}, headers=H).status_code == 400,
+    "…also when it's built in as a link")
+chk(cl.post("/api/company", json={"name": "Anthropic", "url": "https://job-boards.greenhouse.io/anthropic", "tier": "Startup"},
+            headers=H).status_code == 200, "add a company")
+chk(cl.post("/api/company", json={"name": "X", "url": "file:///etc/passwd", "tier": "Big tech"}, headers=H).status_code == 400,
+    "non-https careers link refused")
+chk(cl.post("/api/company", json={"name": "X", "tier": "Hackers"}, headers=H).status_code == 400, "unknown group refused")
+d = cl.get("/api/data").json()
+chk(any(c["name"] == "Anthropic" and c["custom"] for c in d["careers"]["companies"]), "your company shows up (waiting for next update)")
+chk(cl.post("/api/company/delete", json={"name": "Anthropic"}, headers=H).status_code == 200, "remove a company")
 html = open(os.path.join(ROOT, "app", "static", "index.html")).read()
 chk("innerHTML = j.desc" not in html and "esc(j.desc" in html, "job description is escaped before display (no HTML from job sites)")
 

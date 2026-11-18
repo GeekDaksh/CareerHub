@@ -23,4 +23,4 @@ services:
       - key: SESSION_SECRET      # random, made by Render
         generateValue: true
       - key: GITHUB_REPO
-        value: GeekDaksh/careerhub
+        value: GeekDaksh/CareerHub

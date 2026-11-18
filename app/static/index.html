@@ -721,7 +721,9 @@ const ROLE_GROUP = {"GenAI / LLM": "ML & AI", "Computer Vision": "ML & AI", "MLO
 const GROUPS = ["ML & AI", "Software", "Data", "Hardware & robotics", "Product", "Other tech"];
 const FITS = {fits: "Fits a fresher", stretch: "Stretch (1–3 yrs)", check: "Level not stated", "too senior": "Too senior"};
 const FIT_CLS = {fits: "bA", stretch: "bB", check: "bC", "too senior": "bD"};
-const TIERS = ["FAANG+", "Big tech", "India major"];
+const TIERS = ["FAANG+", "Big tech", "Finance & payments", "India major", "Startup"];
+const DIS_REASONS = {senior: "Too senior", field: "Not my field", company: "Not this company", place: "Wrong place / mode"};
+const learnOn = () => ((D.careers || {}).learn || {}).active;
 const roleGroup = (j) => j.is_ml ? "ML & AI" : (ROLE_GROUP[j.family] || "Other tech");
 const bigRows = () => (D.careers && D.careers.rows) || [];
 const bigFresh = () => bigRows().filter((j) => j.is_ml && ["fits", "stretch"].includes(j.fresher_fit) && !["hidden"].includes(st("role:" + j.id)));
@@ -746,21 +748,31 @@ function jobRow(j) {
         <span class="tag who">${esc(j.family)}</span>
         ${(j.specialties || []).filter((x) => x.toLowerCase() !== j.family.toLowerCase()).slice(0, 2).map((x) => `<span class="tag">${esc(x)}</span>`).join("")}
         <span class="tag">${esc(j.cities.slice(0, 2).join(", "))}${j.cities.length > 2 ? ` +${j.cities.length - 2}` : ""}</span>
-        ${j.posted ? `<span class="tag">${esc(ago(j.posted))}</span>` : ""}</div></div>
+        ${j.posted ? `<span class="tag">${esc(ago(j.posted))}</span>` : ""}
+        ${j.elig && !j.elig.ok ? `<span class="tag bD" title="You can't apply to this one">Not eligible: ${esc(j.elig.why)}</span>` : ""}</div></div>
     <div class="side">
+      ${j.fy != null ? `<span class="pill ${pctCls(j.fy)}" title="${esc((j.fy_why || []).join(" · ") || "Learned from your likes and dislikes")}"><b>${j.fy}</b>for you</span>` : ""}
       <span class="pill ${pctCls(j.match)}" title="${j.match == null ? (D.resumes.length ? "The post names too few skills to judge" : "Upload resumes to see this") : "Best: " + esc(j.best)}"><b>${j.match == null ? "—" : j.match + "%"}</b>match</span>
       <span class="pill ${j.legit.pct >= 95 ? "pA" : j.legit.pct >= 80 ? "pB" : "pC"}" title="How sure we are this job is real"><b>${j.legit.pct}%</b>real</span>
+      <button class="mini ${j.r === "like" ? "on" : ""}" data-act="react" data-id="${esc(j.id)}" data-r="${j.r === "like" ? "none" : "like"}" title="Like — show me more like this" aria-label="Like">👍</button>
+      <button class="mini ${j.r === "dislike" ? "on" : ""}" data-act="react" data-id="${esc(j.id)}" data-r="${j.r === "dislike" ? "none" : "dislike"}" title="Dislike — hide it and show fewer like this" aria-label="Dislike">👎</button>
       <button class="mini" data-act="job" data-id="${esc(j.id)}">Details</button></div></div>`;
 }
 function careerBig() {
   const C = D.careers || {rows: []};
   const fG = fsel("bgrp", ["ML & AI"]), fF = fsel("bfit", ["fits", "stretch", "check"].map((k) => FITS[k]));
   const q = (S.f.bq || "").toLowerCase();
-  let list = bigRows().filter((j) => fG.includes(roleGroup(j)) && fF.includes(FITS[j.fresher_fit]) && st("role:" + j.id) !== "hidden" &&
+  const all = bigRows();
+  const notElig = all.filter((j) => j.elig && !j.elig.ok).length, disliked = all.filter((j) => ["dislike", "hidden"].includes(j.r)).length;
+  let list = all.filter((j) => fG.includes(roleGroup(j)) && fF.includes(FITS[j.fresher_fit]) && st("role:" + j.id) !== "hidden" &&
+    (S.f.bnotelig || !j.elig || j.elig.ok) && (S.f.bdis || !["dislike", "hidden"].includes(j.r)) &&
+    (!S.f.bco || j.company === S.f.bco) &&
     (!q || `${j.title} ${j.company} ${j.location} ${j.family} ${(j.specialties || []).join(" ")}`.toLowerCase().includes(q)));
-  const sort = S.f.bsort || "match";
+  const Lr = C.learn || {};
+  const sort = S.f.bsort || ((Lr.reactions || 0) >= 10 ? "fy" : "match");
   const fitRank = {fits: 0, stretch: 1, check: 2, "too senior": 3};
-  list.sort(sort === "new" ? (a, b) => (b.posted || b.first_seen) - (a.posted || a.first_seen)
+  list.sort(sort === "fy" ? (a, b) => ((b.fy ?? 50) - (a.fy ?? 50)) || ((b.match ?? -1) - (a.match ?? -1)) || a.company_rank - b.company_rank
+    : sort === "new" ? (a, b) => (b.posted || b.first_seen) - (a.posted || a.first_seen)
     : sort === "company" ? (a, b) => a.company_rank - b.company_rank || fitRank[a.fresher_fit] - fitRank[b.fresher_fit]
     : (a, b) => ((b.match ?? -1) - (a.match ?? -1)) || fitRank[a.fresher_fit] - fitRank[b.fresher_fit] || a.company_rank - b.company_rank);
   const rows = groupDupes(list);
@@ -780,13 +792,79 @@ function careerBig() {
     ${D.resumes.length ? "" : `<p class="note">Upload your resumes in the <a href="#career/resumes">Resumes</a> tab to see match %, which resume to send, and what to put in it.</p>`}
     <div class="filters">
       <div class="frow"><input class="search" id="bq" placeholder="Search title, company, city, skill…" value="${esc(S.f.bq || "")}">
-        <select class="sel" data-change="bsort"><option value="match">Best match</option><option value="new" ${sort === "new" ? "selected" : ""}>Newest</option><option value="company" ${sort === "company" ? "selected" : ""}>Company order</option></select></div>
+        <select class="sel" data-change="bsort"><option value="match">Best match</option><option value="fy" ${sort === "fy" ? "selected" : ""} ${learnOn() ? "" : "disabled"}>For you${learnOn() ? "" : ` (after ${Lr.needs || 3} more 👍/👎)`}</option><option value="new" ${sort === "new" ? "selected" : ""}>Newest</option><option value="company" ${sort === "company" ? "selected" : ""}>Company order</option></select></div>
       <div class="frow" data-all='${esc(JSON.stringify(GROUPS))}'><span class="lab">Role</span>${chips(GROUPS, fG, "bgrp")}</div>
       <div class="frow" data-all='${esc(JSON.stringify(Object.values(FITS)))}'><span class="lab">Level</span>${chips(Object.values(FITS), fF, "bfit")}</div>
     </div>
-    <p class="dim small">${rows.length} roles shown · ${bigRows().length} technical roles from ${ok} companies · ${C.nontech_hidden || 0} non-technical hidden · updated ${esc(ago(C.updated) || "—")}</p>
+    <div class="frow small">
+      <label><input type="checkbox" data-act="btoggle" data-k="bnotelig" ${S.f.bnotelig ? "checked" : ""}> Show ${notElig} I'm not eligible for (PhD / Master's / other batch)</label>
+      <label><input type="checkbox" data-act="btoggle" data-k="bdis" ${S.f.bdis ? "checked" : ""}> Show ${disliked} I disliked</label>
+      ${S.f.bco ? `<span class="tag who">Only ${esc(S.f.bco)} <button class="mini" data-act="bco" data-n="">✕</button></span>` : ""}</div>
+    ${companyPanel(C)}
+    ${learnPanel(Lr)}
+    <p class="dim small">${rows.length} roles shown · ${all.length} technical roles from ${ok} companies · ${C.nontech_hidden || 0} non-technical hidden · updated ${esc(ago(C.updated) || "—")}</p>
     ${sections}`;
 }
+function companyPanel(C) {
+  const cs = (C.companies || []).slice().sort((a, b) => TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier) || b.count - a.count);
+  const q = (S.f.bcq || "").toLowerCase();
+  const shown = cs.filter((c) => !q || c.name.toLowerCase().includes(q));
+  const links = Object.fromEntries((C.links || []).map((l) => [l.name, l.url]));
+  const status = (c) => c.auto === null ? `<span class="tC">waiting for next update</span>` : c.auto
+    ? (c.ok === false ? `<span class="tC" title="${esc(c.error)}">not read this time</span>` : `<span class="tA">read automatically</span>`)
+    : `<span class="dim" title="${esc(c.why || "")}">link only</span>`;
+  return `<details class="filters" id="copanel" ${S.f.bcopen || q ? "open" : ""}><summary><b>Companies (${cs.length})</b> — search, open, or add your own</summary>
+    <div class="frow"><input class="search" id="bcq" placeholder="Find a company…" value="${esc(S.f.bcq || "")}"></div>
+    <div class="tbl"><table class="mtable"><thead><tr><th>Company</th><th>Group</th><th>Status</th><th>Jobs</th><th></th></tr></thead><tbody>
+      ${shown.slice(0, 60).map((c) => `<tr><td><b>${esc(c.name)}</b>${c.custom ? ' <span class="tag">yours</span>' : ""}</td><td class="small">${esc(c.tier || "")}</td>
+        <td class="small">${status(c)}${c.why && !c.auto ? `<div class="faint">${esc(c.why)}</div>` : ""}</td><td>${c.count || 0}</td>
+        <td>${c.count ? `<button class="mini" data-act="bco" data-n="${esc(c.name)}">Show jobs</button>` : ""}
+          ${links[c.name] ? `<a class="mini" href="${safeUrl(links[c.name])}" target="_blank" rel="noopener noreferrer">Open site ↗</a>` : ""}
+          ${c.custom ? `<button class="mini warnbtn" data-act="codel" data-n="${esc(c.name)}">Remove</button>` : ""}</td></tr>`).join("")}</tbody></table></div>
+    ${!shown.length && q ? `<p class="small">Not in the list yet — add it below.</p>` : ""}
+    <div class="formrow" style="margin-top:12px">
+      <label class="field">Company<input id="coName" maxlength="60" placeholder="e.g. Qualcomm" value="${esc(!shown.length ? S.f.bcq || "" : "")}"></label>
+      <label class="field">Careers page link (optional)<input id="coUrl" maxlength="300" placeholder="https://…myworkdayjobs.com/… or a Greenhouse / Lever / Ashby link"></label>
+      <label class="field">Group<select id="coTier" class="sel">${TIERS.map((t) => `<option ${t === "Big tech" ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>
+      <button class="primary" data-act="coadd">Add company</button></div>
+    <p class="small faint">On the next update Career Hub looks for its job list (Workday, Greenhouse, Lever, Ashby, Oracle), always checking the site's robots.txt first. If it can't find one, the company is kept as a link.</p>
+  </details>`;
+}
+function learnPanel(L) {
+  if (!L || !L.reactions) return `<p class="small dim">👍 / 👎 on any job teaches Career Hub what you want — after 3 it starts scoring jobs "for you".</p>`;
+  const li = (x) => `<li>${esc(x.sign)} ${esc(x.text)} <span class="faint">(${esc(x.detail)})</span></li>`;
+  const ck = L.check;
+  return `<details class="filters"><summary><b>What it has learned</b> — from ${L.reactions} reactions${L.active ? "" : ` (needs ${L.needs} more)`}</summary>
+    <div class="grid2"><div><h4>More of</h4><ul class="small">${(L.likes || []).map(li).join("") || "<li>—</li>"}</ul></div>
+      <div><h4>Less of</h4><ul class="small">${(L.dislikes || []).map(li).join("") || "<li>—</li>"}</ul></div></div>
+    <p class="small dim">${ck ? `Self-check on your own reactions (n=${ck.n}): a job you liked would rank around the top ${100 - (ck.liked_rank_pct ?? 50)}%${ck.disliked_rank_pct != null ? `, one you disliked around the top ${100 - ck.disliked_rank_pct}%` : ""} (random = 50%).` : "A self-check on your own reactions appears after 10."}
+      "For you" becomes the default order after 10 reactions (fewer can mislead).</p>
+    <button class="mini warnbtn" data-act="lreset">Forget everything it learned</button></details>`;
+}
+ACT.btoggle = (d, el) => { S.f[d.k] = el.checked; store.set("f", S.f); render(); };
+ACT.bco = (d) => { S.f.bco = d.n || ""; store.set("f", S.f); render(); window.scrollTo(0, 0); };
+document.addEventListener("toggle", (e) => { if (e.target.id === "copanel") { S.f.bcopen = e.target.open; store.set("f", S.f); } }, true);
+ACT.react = async (d) => {
+  const row = bigRows().find((x) => x.id === d.id);
+  try { await post("/api/react", {id: d.id, r: d.r, reason: d.reason || null}); }
+  catch (e) { toast("Couldn't save that", true); return; }
+  if (row) row.r = d.r === "none" ? null : d.r;
+  if (d.r === "dislike") toast("Hidden. Say why in Details to teach it faster — or tick “Show … I disliked” to undo.");
+  else if (d.r === "like") toast("Liked — it will show more like this");
+  await load(true);
+};
+ACT.coadd = async () => {
+  try { const r = await post("/api/company", {name: $("#coName").value, url: $("#coUrl").value.trim(), tier: $("#coTier").value});
+    toast(`Added ${r.name} — found on the next update`); S.f.bcq = ""; await load(true); }
+  catch (e) { let m = "Couldn't add"; try { m = JSON.parse(e.message).detail || m; } catch (_) {} toast(m, true); }
+};
+ACT.codel = async (d) => { try { await post("/api/company/delete", {name: d.n}); toast("Removed"); await load(true); } catch (e) { toast("Couldn't remove", true); } };
+ACT.lreset = async () => {
+  if (!confirmTwice("lreset")) { toast("Press again to forget all likes / dislikes"); return; }
+  try { await post("/api/learn/reset", {confirm: "reset"}); toast("Forgotten"); await load(true); } catch (e) { toast("Couldn't reset", true); }
+};
+function confirmTwice(k) { const now = Date.now(); const ok = S["_c" + k] && now - S["_c" + k] < 4000; S["_c" + k] = ok ? 0 : now; return ok; }
+document.addEventListener("input", (e) => { if (e.target.id === "bcq") { S.f.bcq = e.target.value; clearTimeout(S._bcq); S._bcq = setTimeout(() => { render(); const q = $("#bcq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
 ACT.bsort = (d, el) => { S.f.bsort = el.value; store.set("f", S.f); render(); };
 ACT.bmore = (d) => { S.f.bmore = {...(S.f.bmore || {}), [d.t]: true}; store.set("f", S.f); render(); };
 document.addEventListener("input", (e) => { if (e.target.id === "bq") { S.f.bq = e.target.value; clearTimeout(S._bq); S._bq = setTimeout(() => { render(); const q = $("#bq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 250); } });
@@ -813,6 +891,12 @@ ACT.job = async (d) => {
       <button class="mini ${s === "saved" ? "on" : ""}" data-act="role2" data-id="${esc(j.id)}" data-s="saved" data-meta='${esc(meta)}'>Save</button>
       <button class="mini ${s === "applied" ? "on" : ""}" data-act="role2" data-id="${esc(j.id)}" data-s="applied" data-meta='${esc(meta)}'>Applied</button>
       <button class="mini" data-act="role2" data-id="${esc(j.id)}" data-s="hidden" data-meta='${esc(meta)}'>Hide</button></div>
+    <div class="row" style="margin:-4px 0 10px">
+      <button class="mini ${j.r === "like" ? "on" : ""}" data-act="react2" data-id="${esc(j.id)}" data-r="${j.r === "like" ? "none" : "like"}">👍 Like</button>
+      <button class="mini ${j.r === "dislike" ? "on" : ""}" data-act="react2" data-id="${esc(j.id)}" data-r="${j.r === "dislike" ? "none" : "dislike"}">👎 Dislike</button>
+      ${j.r === "dislike" ? Object.entries(DIS_REASONS).map(([k, v]) => `<button class="mini" data-act="react2" data-id="${esc(j.id)}" data-r="dislike" data-reason="${k}">${esc(v)}</button>`).join("") : ""}
+      ${j.fy != null ? `<span class="small dim">For you: <b>${j.fy}</b> — ${esc((j.fy_why || []).map((x) => `${x.sign} ${x.text}`).join(" · ") || "neutral")}</span>` : ""}</div>
+    ${j.eligible && !j.eligible.ok ? `<p class="flag warn"><b>Not eligible:</b> ${esc(j.eligible.why)}${j.eligible.evidence ? ` — “${esc(j.eligible.evidence)}”` : ""}</p>` : ""}
     <h3>Is it real? <span class="${L.pct >= 95 ? "tA" : L.pct >= 80 ? "tB" : "tC"}">${esc(L.pct)}% · ${esc(L.band)}</span></h3>
     ${(L.checks || []).map((c) => `<div class="chk"><i class="${c.ok ? "tA" : "tD"}">${c.ok ? "✓" : "✕"}</i><span>${esc(c.label)}</span><span class="d">${esc(c.detail)}</span></div>`).join("")}
     <p class="small faint">A rule score from the checks above, not a measured probability. Where a job comes from matters most: text checks alone catch only about 1 in 8 scams.</p>
@@ -823,9 +907,20 @@ ACT.job = async (d) => {
     ${(A.hard || []).length ? `<p class="flag warn">Can't be fixed by a resume: ${esc(A.hard.join("; "))}</p>` : ""}
     <h3>Your resumes vs this job${A.best ? ` — send <span class="tA">${esc(A.best)}</span>` : ""}</h3>${resTable}
     ${pts ? `<h3>What to put in your resume</h3>${pts}<p class="small faint">Built only from your resume text and this job's text. Never add a skill you haven't used.</p>` : ""}
+    ${(j.similar || []).length ? `<h3>More like this</h3><div class="jlist">${j.similar.map((x) => `<div class="jrow" data-act="job" data-id="${esc(x.id)}" role="button" tabindex="0"><div><div class="co">${esc(x.company)}</div><div class="t">${esc(x.title)}</div><div class="meta"><span class="tag who">${esc(x.family)}</span><span class="tag ${FIT_CLS[x.fresher_fit]}">${esc(FITS[x.fresher_fit])}</span></div></div><div class="side"><button class="mini" data-act="job" data-id="${esc(x.id)}">Open</button></div></div>`).join("")}</div>` : ""}
     <details><summary>Job description (from the official site)</summary><div class="desc">${esc(j.desc || "This site doesn't give a description in its list — open the official page.")}</div></details>`);
 };
-ACT.role2 = (d) => { track("role:" + d.id, d.s, JSON.parse(d.meta)); $("#dlg").close(); };
+ACT.role2 = (d) => {
+  track("role:" + d.id, d.s, JSON.parse(d.meta));
+  post("/api/react", {id: d.id, r: d.s, reason: null}).catch(() => {});      // saving / applying / hiding also teaches it
+  $("#dlg").close();
+};
+ACT.react2 = async (d) => {
+  try { await post("/api/react", {id: d.id, r: d.r, reason: d.reason || null}); } catch (e) { toast("Couldn't save that", true); return; }
+  if (d.reason) toast(`Noted: ${DIS_REASONS[d.reason]}`);
+  load(true);
+  ACT.job({id: d.id});
+};
 
 /* ---------- RESUMES ---------- */
 function careerResumes() {

@@ -3,14 +3,20 @@ and save data/careers/official.json for the app.   python -m careers.run
 
 Each run has a time budget (CAREERS_BUDGET_SECONDS, default 540). Companies refreshed longest ago go first, so
 over a day every company gets refreshed even though one run can't do them all.
-A job stays while it keeps being seen; not seen for legit.CLOSED_AFTER_D days → dropped as probably closed.
+A job stays while it keeps being seen. Not seen for legit.CLOSED_AFTER_D days:
+  • company re-read OK since, whole board read (Greenhouse/Lever/Ashby) → closed, dropped
+  • company re-read OK since, search-based site (Workday, Amazon, Google, Apple, Oracle) → kept up to 7 days (it may
+    just not match this run's search words)
+  • company NOT re-read since (blocked / resting / over budget) → kept up to 14 days, marked "not re-checked"
+A company that becomes link-only (e.g. its robots.txt changes) has its jobs removed at once.
 Gates (common/gates.py, kind "careers") run before saving; if they fail the last good file is kept.
 """
 import json
 import os
 import time
 
-from careers import classify as K, legit, match as M, registry, sources as S
+import config as CFG
+from careers import classify as K, custom as CU, eligible as EL, legit, match as M, registry, sources as S
 from common import gates
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
@@ -61,6 +67,7 @@ def enrich(j, company, now):
     j.update(c)
     j["skills"] = M.job_skills(j)            # what the job asks for (server compares it with your resumes)
     j["hard"] = M.hard_requirements(j)
+    j["eligible"] = EL.check(j, CFG.PROFILE.get("degree", "bachelor"), CFG.PROFILE.get("grad_year"))
     j["legit"] = legit.official(j, company, j.get("last_seen"), now)
     j["visible"] = j["legit"]["pct"] >= 55
     if c["family"] == "Non-technical":
@@ -70,13 +77,62 @@ def enrich(j, company, now):
     return j
 
 
+FULL_BOARD = {"greenhouse", "lever", "ashby", "smartrecruiters"}   # we read the whole board, not search results
+KEEP_UNCHECKED_D = 14       # company couldn't be re-checked (blocked / resting): keep its jobs this long
+DISCOVER_PER_RUN = 5
+
+
+def _board_size(ats, slug):
+    """How many jobs a Greenhouse / Lever / Ashby board has (used to find a company's board from its name)."""
+    url = S.api_url({"ats": ats, "slug": slug})
+    if not S.robots_allowed(url)[0]:
+        raise RuntimeError("robots.txt disallows")
+    d = S.cget(url)
+    return len(d.get("jobs") or []) if isinstance(d, dict) else len(d or [])
+
+
+def custom_companies(old, now, board_size=_board_size):
+    """Daksh's own companies (from the app), each resolved to a connector once and cached in official.json."""
+    entries = load(os.path.join(DATA_DIR, "careerprefs", "companies.json"), {}).get("companies", [])[:CU.MAX_COMPANIES]
+    cache, out, tried = dict(old.get("custom") or {}), [], 0
+    for i, e in enumerate(entries):
+        key = f"{e.get('name')}|{e.get('url', '')}"
+        if key not in cache and tried < DISCOVER_PER_RUN:
+            tried += 1
+            cache[key] = {**CU.discover(e, board_size), "at": now}
+        cfg = cache.get(key)
+        if not cfg:
+            continue
+        c = {k: v for k, v in cfg.items() if k not in ("found", "at")}
+        out.append({**c, "name": e["name"], "tier": e.get("tier", "Big tech"), "custom": True, "rank": 500 + i,
+                    "found": cfg.get("found", "")})
+    names = {f"{e.get('name')}|{e.get('url', '')}" for e in entries}
+    return out, {k: v for k, v in cache.items() if k in names}
+
+
+def keep(j, company, health, now):
+    """Is this job still worth showing? (see the rules in the module docstring)"""
+    age = now - j.get("last_seen", 0)
+    if age <= legit.CLOSED_AFTER_D * 86400:
+        return True
+    ok_at = (health.get(j["company"]) or {}).get("ok_at", 0)
+    if ok_at <= j.get("last_seen", 0):                 # not re-checked since → can't tell it closed
+        return age <= KEEP_UNCHECKED_D * 86400
+    if company.get("ats") in FULL_BOARD:               # re-read the whole board and it wasn't there → closed
+        return False
+    return age <= 7 * 86400                            # search-based sites: it may just not match this run's words
+
+
 def run(now=None, budget=BUDGET, collect=S.collect):
     now = now or time.time()
     path = os.path.join(DIR, "official.json")
     old = load(path, {})
     jobs = {j["id"]: j for j in old.get("jobs", [])}
     health = old.get("health", {})
-    companies_all = registry.CANDIDATES + custom_companies()
+    mine, custom_cache = custom_companies(old, now)
+    reg_names = {c["name"].lower() for c in registry.CANDIDATES}
+    mine = [c for c in mine if c["name"].lower() not in reg_names]      # already built in
+    companies_all = registry.CANDIDATES + mine
     companies = {c["name"]: c for c in companies_all}
     known = {}
     for j in jobs.values():
@@ -107,18 +163,21 @@ def run(now=None, budget=BUDGET, collect=S.collect):
         jobs[j["id"]] = j
     kept = []
     for j in jobs.values():
-        if now - j.get("last_seen", 0) > legit.CLOSED_AFTER_D * 86400:
-            continue
-        kept.append(enrich(j, companies.get(j["company"], {"name": j["company"], "ats": j.get("ats")}), now))
-    kept.sort(key=lambda j: (j.get("company_rank", 99), registry.TIER_RANK.get(j["company_tier"], 9), -(j.get("posted") or 0)))
+        co = companies.get(j["company"])
+        if not co or co.get("ats") == "link" or not keep(j, co, health, now):
+            continue                       # company removed / now link-only (e.g. robots.txt changed) / closed
+        kept.append(enrich(j, co, now))
+    kept.sort(key=lambda j: (registry.TIER_RANK.get(j["company_tier"], 9), j.get("company_rank", 99), -(j.get("posted") or 0)))
     prev_visible = sum(1 for j in old.get("jobs", []) if j.get("visible"))
     ok = gates.guard("careers", kept, prev_visible, health, now)
-    links = [{"name": c["name"], "tier": c["tier"], "url": c["search_url"]} for c in registry.CANDIDATES if c.get("ats") == "link"]
+    links = [{"name": c["name"], "tier": c["tier"], "url": c["search_url"], "why": c.get("why", ""), "custom": c.get("custom", False)}
+             for c in companies_all if c.get("ats") == "link" and c.get("search_url")]
+    roster = [{"name": c["name"], "tier": c["tier"], "auto": c.get("ats") != "link", "custom": c.get("custom", False),
+               "why": c.get("why") or c.get("found", ""), "ats": c.get("ats")} for c in companies_all]
     if ok:
-        save(path, {"updated": now, "jobs": kept, "health": health, "links": links})
+        save(path, {"updated": now, "jobs": kept, "health": health, "links": links, "custom": custom_cache, "companies": roster})
     else:
-        old["health"] = health
-        save(path, {**old, "health": health})
+        save(path, {**old, "health": health, "custom": custom_cache, "companies": roster})
     vis = sum(1 for j in kept if j["visible"])
     ml = sum(1 for j in kept if j["visible"] and j.get("is_ml"))
     fresh = sum(1 for j in kept if j["visible"] and j.get("fresher_fit") in ("fits", "stretch"))

@@ -1,0 +1,98 @@
+[
+ {
+  "persona": "GenAI/CV fresher",
+  "share": 0.02,
+  "reactions": 5,
+  "auc": 0.852,
+  "lo": 0.7189955106621774,
+  "hi": 0.9193792854565139
+ },
+ {
+  "persona": "GenAI/CV fresher",
+  "share": 0.02,
+  "reactions": 10,
+  "auc": 0.914,
+  "lo": 0.8567118226600985,
+  "hi": 0.9545258620689655
+ },
+ {
+  "persona": "GenAI/CV fresher",
+  "share": 0.02,
+  "reactions": 20,
+  "auc": 0.933,
+  "lo": 0.8512315270935961,
+  "hi": 0.980958230958231
+ },
+ {
+  "persona": "GenAI/CV fresher",
+  "share": 0.02,
+  "reactions": 40,
+  "auc": 0.95,
+  "lo": 0.9154556650246305,
+  "hi": 0.9819665442676458
+ },
+ {
+  "persona": "Hardware at big tech",
+  "share": 0.14,
+  "reactions": 5,
+  "auc": 0.943,
+  "lo": 0.7521013221415712,
+  "hi": 0.9784670641977892
+ },
+ {
+  "persona": "Hardware at big tech",
+  "share": 0.14,
+  "reactions": 10,
+  "auc": 0.96,
+  "lo": 0.8741457080371788,
+  "hi": 0.9830314984161138
+ },
+ {
+  "persona": "Hardware at big tech",
+  "share": 0.14,
+  "reactions": 20,
+  "auc": 0.972,
+  "lo": 0.9198844997266266,
+  "hi": 0.9857827291618564
+ },
+ {
+  "persona": "Hardware at big tech",
+  "share": 0.14,
+  "reactions": 40,
+  "auc": 0.975,
+  "lo": 0.9568944197131166,
+  "hi": 0.9888273957875189
+ },
+ {
+  "persona": "Data roles",
+  "share": 0.01,
+  "reactions": 5,
+  "auc": 0.944,
+  "lo": 0.8504573170731707,
+  "hi": 0.9830097087378641
+ },
+ {
+  "persona": "Data roles",
+  "share": 0.01,
+  "reactions": 10,
+  "auc": 0.966,
+  "lo": 0.8603698372273281,
+  "hi": 0.9948678861788618
+ },
+ {
+  "persona": "Data roles",
+  "share": 0.01,
+  "reactions": 20,
+  "auc": 0.976,
+  "lo": 0.9026092233009708,
+  "hi": 0.9938528138528139
+ },
+ {
+  "persona": "Data roles",
+  "share": 0.01,
+  "reactions": 40,
+  "auc": 0.98,
+  "lo": 0.9296116504854369,
+  "hi": 0.9940997566909976
+ }
+]
