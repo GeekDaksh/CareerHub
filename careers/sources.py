@@ -343,8 +343,90 @@ def smartrecruiters(c, details=40):
     return jobs
 
 
+# ---------------------------------------------------------------- Apple (its search page carries the results as data)
+def _apple_items(html_text):
+    m = re.search(r"__staticRouterHydrationData\s*=\s*JSON\.parse\((\".*?\")\);", html_text, re.S)
+    if not m:
+        raise RuntimeError("Apple jobs page layout changed (hydration data not found)")
+    found = []
+
+    def walk(x):
+        if isinstance(x, dict):
+            if "positionId" in x and "postingTitle" in x:
+                found.append(x)
+            else:
+                for v in x.values():
+                    walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+    walk(json.loads(json.loads(m.group(1))))
+    return found
+
+
+def apple(c, queries=None, pages=2):
+    out = {}
+    for q in queries or run_queries():
+        for page in range(1, pages + 1):
+            items = _apple_items(cget("https://jobs.apple.com/en-in/search",
+                                      params={"location": "india-INDC", "search": q, "page": page}, as_json=False))
+            for x in items:
+                team = str((x.get("team") or {}).get("teamName") or "")
+                if "retail" in team.lower():
+                    continue                                     # Apple Store roles, not tech
+                locs = "; ".join(filter(None, [", ".join(filter(None, [l.get("name") or l.get("city"), l.get("countryName")]))
+                                               for l in x.get("locations") or [] if isinstance(l, dict)]))
+                if not INDIA.search(locs):
+                    locs = (locs + "; India").strip("; ")                    # the search itself is limited to India
+                pid = str(x["positionId"])
+                url = f"https://jobs.apple.com/en-in/details/{pid}/{x.get('transformedPostingTitle') or ''}".rstrip("/")
+                out[pid] = _job(c["name"], pid, x.get("postingTitle"), url, locs, x.get("postDateInGMT"),
+                                f"Team: {team}. {x.get('jobSummary') or ''}", "", "apple", {"team": team})
+            if len(items) < 20:
+                break
+    return list(out.values())
+
+
+# ---------------------------------------------------------------- Oracle Recruiting Cloud (JPMorgan, Oracle, …)
+def orc(c, queries=None, details=10):
+    host, site = c["host"], c["site"]
+    api = f"https://{host}/hcmRestApi/resources/latest"
+    out, fetched = {}, 0
+    for q in queries or run_queries():
+        q = re.sub(r"[^\w ]", "", q)
+        for off in (0, 25):
+            d = cget(f"{api}/recruitingCEJobRequisitions", params={
+                "onlyData": "true", "expand": "requisitionList.secondaryLocations",
+                "finder": f'findReqs;siteNumber={site},limit=25,offset={off},keyword="{q}",sortBy=POSTING_DATES_DESC'})
+            reqs = ((d.get("items") or [{}])[0].get("requisitionList")) or []
+            for r in reqs:
+                locs = "; ".join(filter(None, [r.get("PrimaryLocation")] + [x.get("Name") for x in r.get("secondaryLocations") or []
+                                                                             if isinstance(x, dict)]))
+                if r.get("PrimaryLocationCountry") != "IN" and not in_reach(locs):
+                    continue
+                parts = [r.get("ShortDescriptionStr"), r.get("ExternalResponsibilitiesStr"), r.get("ExternalQualificationsStr")]
+                desc = " ".join(str(p) for p in parts if p and str(p) != "None")
+                jid = f"off:{c['name'].lower().replace(' ', '')}:{r['Id']}"
+                if fetched < details and jid not in c.get("_known", ()):
+                    fetched += 1
+                    try:
+                        dd = cget(f"{api}/recruitingCEJobRequisitionDetails", params={
+                            "onlyData": "true", "expand": "all", "finder": f'ById;Id="{r["Id"]}",siteNumber={site}'})
+                        it = (dd.get("items") or [{}])[0]
+                        desc = " ".join(str(it.get(k)) for k in ("ExternalDescriptionStr", "ExternalResponsibilitiesStr",
+                                                                   "ExternalQualificationsStr") if it.get(k)) or desc
+                    except Exception:
+                        pass
+                out[r["Id"]] = _job(c["name"], r["Id"], r.get("Title"), f"https://{host}/hcmUI/CandidateExperience/en/sites/{site}/job/{r['Id']}",
+                                    locs, r.get("PostedDate"), desc, "", "oracle recruiting")
+            if len(reqs) < 25:
+                break
+    return list(out.values())
+
+
 CONNECTORS = {"amazon": amazon, "google": google, "eightfold": eightfold, "workday": workday,
-              "greenhouse": greenhouse, "lever": lever, "ashby": ashby, "smartrecruiters": smartrecruiters}
+              "greenhouse": greenhouse, "lever": lever, "ashby": ashby, "smartrecruiters": smartrecruiters,
+              "apple": apple, "orc": orc}
 
 
 def search_link(c):

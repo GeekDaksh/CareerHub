@@ -183,7 +183,20 @@ def main():
             ids = set(re.findall(r"jobs\.smartrecruiters\.com/BoschGroup/(\d+)", html))
             marks = re.findall(r"(opening-job|job-title|__NEXT_DATA__|window\.__)", html)[:6]
             return f"page {len(html)} chars, {len(ids)} job links; markers {marks}"
-        for name, fn in [("robots", robots_audit), ("smartrecruiters careers page", sr_page)]:
+        def exact():
+            urls = ["https://www.google.com/about/careers/applications/jobs/results?q=machine%20learning&location=India&page=1",
+                    "https://www.google.com/about/careers/applications/jobs/results/123-ml-engineer",
+                    "https://www.amazon.jobs/en/search.json?base_query=intern&loc_query=India&country=IND",
+                    "https://apply.careers.microsoft.com/api/pcsx/search?domain=microsoft.com&query=intern&location=India",
+                    "https://jobs.apple.com/en-in/search?location=india-INDC&search=intern&page=1",
+                    "https://api.smartrecruiters.com/v1/companies/BoschGroup/postings?country=in"]
+            out = [f"{u[8:70]}: {S.robots_allowed(u)}" for u in urls]
+            g = S._robots.get("https://www.google.com", ("", ""))[1] or ""
+            out.append("google careers lines: " + str([l for l in g.splitlines() if "careers" in l.lower() or "sitemap" in l.lower()][:14]))
+            sr = S._robots.get("https://api.smartrecruiters.com", ("", ""))[1] or ""
+            out.append("smartrecruiters api robots: " + sr[:300].replace("\n", " / "))
+            return " ;; ".join(out)
+        for name, fn in [("exact robots", exact)]:
             try:
                 print(f"::notice title={name}::{fn()}")
             except Exception as e:
