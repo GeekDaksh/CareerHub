@@ -116,7 +116,72 @@ def pacing():
     return f"12 requests 1.5 s apart → {codes}"
 
 
+def robots_audit():
+    """Exact robots verdict for every address the connectors use (RFC 9309: a 4xx robots.txt means allowed)."""
+    urls = {"amazon": "https://www.amazon.jobs/en/search.json", "google": "https://www.google.com/about/careers/applications/jobs/results",
+            "ms-apply": "https://apply.careers.microsoft.com/api/pcsx/search", "ms-gcs": "https://gcsservices.careers.microsoft.com/search/api/v1/search",
+            "ms-jobs": "https://jobs.careers.microsoft.com/global/en/search",
+            "sr-api": "https://api.smartrecruiters.com/v1/companies/BoschGroup/postings", "sr-jobs": "https://jobs.smartrecruiters.com/BoschGroup",
+            "sr-careers": "https://careers.smartrecruiters.com/BoschGroup", "greenhouse": "https://boards-api.greenhouse.io/v1/boards/databricks/jobs",
+            "lever": "https://api.lever.co/v0/postings/meesho", "ashby": "https://api.ashbyhq.com/posting-api/job-board/sarvam",
+            "workday": "https://salesforce.wd12.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/jobs",
+            "apple": "https://jobs.apple.com/en-in/search", "orc": "https://jpmc.fa.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions"}
+    out = []
+    for k, u in urls.items():
+        p = urlparse(u)
+        try:
+            r = SESSION.get(f"{p.scheme}://{p.netloc}/robots.txt", timeout=20)
+            if r.status_code >= 500:
+                out.append(f"{k}: robots {r.status_code} → treat as disallowed")
+                continue
+            if r.status_code >= 400:
+                out.append(f"{k}: robots {r.status_code} → allowed (RFC 9309)")
+                continue
+            rp = urllib.robotparser.RobotFileParser()
+            rp.parse(r.text.splitlines())
+            dis = [l.strip() for l in r.text.splitlines() if l.lower().startswith("disallow")][:4]
+            out.append(f"{k}: {'ALLOWED' if rp.can_fetch(UA, u) and rp.can_fetch('*', u) else 'DISALLOWED'} {dis}")
+        except Exception as e:
+            out.append(f"{k}: robots unreachable {type(e).__name__}")
+    return " ;; ".join(out)
+
+
+def apple_shape():
+    html = S.get("https://jobs.apple.com/en-in/search", params={"location": "india-INDC", "search": "machine learning"}, as_json=False)
+    m = re.search(r"__staticRouterHydrationData\s*=\s*JSON\.parse\((\".*?\")\);", html, re.S)
+    data = json.loads(json.loads(m.group(1)))
+    found = []
+
+    def walk(x):
+        if isinstance(x, dict):
+            if "positionId" in x and "postingTitle" in x:
+                found.append(x)
+            for v in x.values():
+                walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+    walk(data)
+    s = found[0] if found else {}
+    return f"{len(found)} items; item: " + json.dumps({k: (str(v)[:70]) for k, v in s.items()})[:1400]
+
+
+def orc_shape():
+    url = "https://jpmc.fa.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions"
+    d = S.get(url, params={"onlyData": "true", "expand": "requisitionList.secondaryLocations",
+                           "finder": 'findReqs;siteNumber=CX_1001,limit=5,keyword="machine learning",sortBy=POSTING_DATES_DESC'})
+    s = ((d.get("items") or [{}])[0].get("requisitionList") or [{}])[0]
+    return "item: " + json.dumps({k: (str(v)[:60]) for k, v in s.items()})[:1400]
+
+
 def main():
+    if len(__import__("sys").argv) > 1 and __import__("sys").argv[1] == "2":
+        for name, fn in [("robots", robots_audit), ("apple shape", apple_shape), ("orc shape", orc_shape)]:
+            try:
+                print(f"::notice title={name}::{fn()}")
+            except Exception as e:
+                print(f"::notice title={name}::FAIL {type(e).__name__} {str(e)[:200]}")
+        return
     check("Apple", "https://jobs.apple.com/en-in/search?location=india-INDC", apple)
     check("Mastercard", "https://mastercard.wd1.myworkdayjobs.com/wday/cxs/mastercard/CorporateCareers/jobs",
           wd("mastercard", "wd1", "CorporateCareers"))
