@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: probe or dump
+        description: probe, dump or explore
         default: probe
 permissions:
   contents: read
@@ -21,8 +21,12 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt
-      - if: inputs.mode != 'dump'
+      - if: inputs.mode == 'probe'
         run: python -m careers.probe
+        env:
+          PYTHONUNBUFFERED: "1"
+      - if: inputs.mode == 'explore'
+        run: python -m careers.explore
         env:
           PYTHONUNBUFFERED: "1"
       - if: inputs.mode == 'dump'
