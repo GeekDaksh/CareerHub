@@ -19,6 +19,7 @@ import html
 import json
 import re
 import time
+from careers import robots as ROBOTS
 from gigs.sources import MAX_BYTES, MAX_SECONDS, SESSION, get, strip_html, to_epoch
 
 INDIA = re.compile(r"\b(india|bengaluru|bangalore|hyderabad|pune|mumbai|gurugram|gurgaon|noida|delhi|chennai|"
@@ -26,6 +27,98 @@ INDIA = re.compile(r"\b(india|bengaluru|bangalore|hyderabad|pune|mumbai|gurugram
 REMOTE_OPEN = re.compile(r"\b(apac|asia|worldwide|anywhere|global)\b", re.I)
 QUERIES = ["machine learning", "artificial intelligence", "data scientist", "computer vision", "generative ai",
            "research", "intern", "graduate", "software engineer"]
+
+
+# ---------------------------------------------------------------- politeness: pacing + retry on "slow down" (429)
+# Measured 2026-11-15..18: Workday sites answered 429 "Too Many Requests" to 9–14 of 30 companies per run when we sent
+# ~60 requests per company back to back. Now: a minimum gap between requests to the same site family, and on 429 we
+# wait (Retry-After, capped) and retry at most twice before giving up on that company for this run.
+PACE = {"myworkdayjobs.com": 1.5, "careers.microsoft.com": 1.5, "smartrecruiters.com": 0.5}
+PACE_DEFAULT = 0.3
+RETRY_STATUSES = (429, 503)
+MAX_RETRIES = 2
+MAX_WAIT = 30
+_last = {}
+
+
+def _family(url):
+    h = re.sub(r"^https?://", "", str(url)).split("/")[0].lower()
+    return next((k for k in PACE if h == k or h.endswith("." + k)), h)
+
+
+def _pace(url):
+    fam = _family(url)
+    gap = PACE.get(fam, PACE_DEFAULT)
+    wait = _last.get(fam, 0) + gap - time.time()
+    if wait > 0:
+        time.sleep(wait)
+    _last[fam] = time.time()
+
+
+NO_RETRY = {"myworkdayjobs.com"}     # Workday blocks in bursts: retrying only makes it worse → stop, rest, retry next run
+
+
+def _polite(call, url, *a, **kw):
+    tries = 1 if _family(url) in NO_RETRY else MAX_RETRIES + 1
+    for attempt in range(tries):
+        _pace(url)
+        try:
+            return call(url, *a, **kw)
+        except Exception as e:
+            code = getattr(getattr(e, "response", None), "status_code", None)
+            if code not in RETRY_STATUSES or attempt == tries - 1:
+                raise
+            ra = getattr(e.response, "headers", {}).get("Retry-After", "")
+            wait = min(MAX_WAIT, int(ra) if str(ra).isdigit() else 5 * (attempt + 1))
+            time.sleep(wait)
+
+
+# ---------------------------------------------------------------- robots.txt gate (checked every run, per site)
+# RFC 9309: robots.txt answering 4xx → no rules (allowed); 5xx / unreachable → treat as disallowed.
+_robots = {}
+
+
+def robots_allowed(url):
+    """(allowed, reason) for the exact address a connector will use."""
+    from urllib.parse import urlparse
+    p = urlparse(url)
+    key = f"{p.scheme}://{p.netloc}"
+    if key not in _robots:
+        try:
+            _pace(url)
+            r = SESSION.get(key + "/robots.txt", timeout=20)
+            if r.status_code >= 500:
+                _robots[key] = ("down", None)
+            elif r.status_code >= 400:
+                _robots[key] = ("none", None)
+            else:
+                _robots[key] = ("rules", r.text)
+        except Exception:
+            _robots[key] = ("down", None)
+    kind, text = _robots[key]
+    if kind == "down":
+        return False, "robots.txt unreachable — skipped to be safe"
+    if kind == "none":
+        return True, "no robots.txt rules"
+    path = p.path + (f"?{p.query}" if p.query else "")
+    ok = ROBOTS.allowed(text, path or "/", SESSION.headers.get("User-Agent", "*"))
+    return ok, ("allowed by robots.txt" if ok else f"robots.txt disallows {p.path}")
+
+
+def cget(url, params=None, as_json=True):
+    return _polite(get, url, params=params, as_json=as_json)
+
+
+def cpost(url, body):
+    return _polite(post_json, url, body)
+
+
+def run_queries(n=3, now=None):
+    """Which search words this run uses: 'intern' + 'graduate' always (fresher focus), plus n more that rotate
+    every 6 hours, so every word is used within a day without hammering any site."""
+    rest = [q for q in QUERIES if q not in ("intern", "graduate")]
+    k = int((now or time.time()) // 21600)
+    return ["intern", "graduate"] + [rest[(k * n + i) % len(rest)] for i in range(n)]
 
 
 def in_reach(loc):
@@ -76,7 +169,7 @@ def amazon(c, queries=QUERIES, pages=2):
     out = {}
     for q in queries:
         for p in range(pages):
-            d = get("https://www.amazon.jobs/en/search.json", params={
+            d = cget("https://www.amazon.jobs/en/search.json", params={
                 "base_query": q, "loc_query": "India", "country": "IND", "result_limit": 50, "offset": p * 50,
                 "sort": "recent"})
             jobs = d.get("jobs") or []
@@ -107,7 +200,7 @@ def google(c, queries=QUERIES[:6], pages=2):
     out = {}
     for q in queries:
         for p in range(1, pages + 1):
-            html = get("https://www.google.com/about/careers/applications/jobs/results",
+            html = cget("https://www.google.com/about/careers/applications/jobs/results",
                        params={"q": q, "location": "India", "page": p}, as_json=False)
             rows = _google_rows(html)
             for r in rows:
@@ -128,11 +221,11 @@ def google(c, queries=QUERIES[:6], pages=2):
 
 
 # ---------------------------------------------------------------- Eightfold (Microsoft)
-def eightfold(c, queries=QUERIES[:6]):
+def eightfold(c, queries=None):
     out = {}
     base, domain = c["base"], c["domain"]
-    for q in queries:
-        d = get(f"{base}/api/pcsx/search", params={"domain": domain, "query": q, "location": "India", "start": 0,
+    for q in queries or run_queries():
+        d = cget(f"{base}/api/pcsx/search", params={"domain": domain, "query": q, "location": "India", "start": 0,
                                                    "sort_by": "timestamp"})
         jobs = (d.get("data") or {}).get("positions") or d.get("positions") or []
         for x in jobs:
@@ -148,14 +241,14 @@ def eightfold(c, queries=QUERIES[:6]):
 
 
 # ---------------------------------------------------------------- Workday
-def workday(c, queries=QUERIES, details=8):
+def workday(c, queries=None, details=12):
     tenant, wd, site = c["tenant"], c["wd"], c["site"]
     host = f"https://{tenant}.{wd}.myworkdayjobs.com"
     api = f"{host}/wday/cxs/{tenant}/{site}"
     out = {}
-    for q in queries:
+    for q in queries or run_queries(n=1):          # Workday: 3 searches per run, fewest requests
         for offset in (0, 20):
-            d = post_json(f"{api}/jobs", {"appliedFacets": {}, "limit": 20, "offset": offset, "searchText": f"{q} India"})
+            d = cpost(f"{api}/jobs", {"appliedFacets": {}, "limit": 20, "offset": offset, "searchText": f"{q} India"})
             posts = d.get("jobPostings") or []
             for x in posts:
                 if not in_reach(x.get("locationsText")) and "Locations" not in str(x.get("locationsText")):
@@ -164,12 +257,16 @@ def workday(c, queries=QUERIES, details=8):
                 out[path] = {"path": path, "title": x.get("title"), "loc": x.get("locationsText") or ""}
             if len(posts) < 20:
                 break
-    jobs = []
-    for i, x in enumerate(out.values()):
+    jobs, fetched = [], 0
+    # details (one request each) only for new jobs, ML / fresher-looking titles first, capped per run
+    order = sorted(out.values(), key=lambda x: not re.search(r"intern|graduate|early|junior|associate|machine|\bml\b|"
+                                                             r"\bai\b|data|vision|research|scientist", str(x["title"]), re.I))
+    for x in order:
         desc, loc, posted = "", x["loc"], None
-        if i < details * 6 and x["path"] not in c.get("_known", ()):   # details: capped, and only for new jobs
+        if fetched < details and x["path"] not in c.get("_known", ()):
+            fetched += 1
             try:
-                dd = get(f"{api}{x['path']}").get("jobPostingInfo") or {}
+                dd = cget(f"{api}{x['path']}").get("jobPostingInfo") or {}
                 desc = dd.get("jobDescription") or ""
                 loc = "; ".join(filter(None, [dd.get("location")] + list(dd.get("additionalLocations") or []))) or loc
                 posted = dd.get("startDate")
@@ -184,7 +281,7 @@ def workday(c, queries=QUERIES, details=8):
 
 # ---------------------------------------------------------------- public job-board APIs
 def greenhouse(c):
-    d = get(f"https://boards-api.greenhouse.io/v1/boards/{c['slug']}/jobs", params={"content": "true"})
+    d = cget(f"https://boards-api.greenhouse.io/v1/boards/{c['slug']}/jobs", params={"content": "true"})
     return [_job(c["name"], j["id"], j.get("title"), j.get("absolute_url"), (j.get("location") or {}).get("name"),
                  j.get("updated_at"), html.unescape(j.get("content") or ""),
                  "", "greenhouse")
@@ -192,7 +289,7 @@ def greenhouse(c):
 
 
 def lever(c):
-    d = get(f"https://api.lever.co/v0/postings/{c['slug']}", params={"mode": "json"})
+    d = cget(f"https://api.lever.co/v0/postings/{c['slug']}", params={"mode": "json"})
     return [_job(c["name"], j["id"], j.get("text"), j.get("hostedUrl"),
                  "; ".join(filter(None, [(j.get("categories") or {}).get("location"), j.get("workplaceType")])),
                  j.get("createdAt"), j.get("descriptionPlain") or "", (j.get("categories") or {}).get("commitment") or "", "lever")
@@ -200,7 +297,7 @@ def lever(c):
 
 
 def ashby(c):
-    d = get(f"https://api.ashbyhq.com/posting-api/job-board/{c['slug']}")
+    d = cget(f"https://api.ashbyhq.com/posting-api/job-board/{c['slug']}")
     out = []
     for j in d.get("jobs") or []:
         loc = "; ".join(filter(None, [j.get("location")] + [x.get("location") for x in j.get("secondaryLocations") or []
@@ -220,7 +317,7 @@ def smartrecruiters(c, details=40):
     api = f"https://api.smartrecruiters.com/v1/companies/{c['slug']}/postings"
     out, offset = [], 0
     while offset < 300:
-        d = get(api, params={"country": "in", "limit": 100, "offset": offset})
+        d = cget(api, params={"country": "in", "limit": 100, "offset": offset})
         page = d.get("content") or []
         out += page
         if len(page) < 100:
@@ -237,7 +334,7 @@ def smartrecruiters(c, details=40):
         if fetched < details and jid not in c.get("_known", ()) and SR_TECH.search(j.get("name") or ""):
             fetched += 1
             try:
-                ad = (get(f"{api}/{j['id']}").get("jobAd") or {}).get("sections") or {}
+                ad = (cget(f"{api}/{j['id']}").get("jobAd") or {}).get("sections") or {}
                 desc = " ".join(f"{(v or {}).get('title', '')}: {(v or {}).get('text', '')}" for v in ad.values())
             except Exception:
                 pass
@@ -264,6 +361,15 @@ def collect(companies, health, now=None, budget_s=420, known=None):
         if not fn:
             continue
         c = {**c, "_known": (known or {}).get(c["name"], set())}
+        until = (health.get(c["name"]) or {}).get("backoff_until", 0)
+        if until > now:
+            health[c["name"]] = {**health.get(c["name"], {}), "ok": False, "count": 0, "at": now,
+                                 "error": f"resting after being told to slow down (until {time.strftime('%d %b %H:%M', time.gmtime(until))} UTC)"}
+            continue
+        allowed, why = robots_allowed(api_url(c))
+        if not allowed:
+            health[c["name"]] = {"ok": False, "count": 0, "at": now, "error": why, "robots": False}
+            continue
         if time.time() - t0 > budget_s:
             health[c["name"]] = {"ok": False, "count": 0, "at": now, "error": "skipped: time budget used, next run"}
             continue
@@ -273,7 +379,27 @@ def collect(companies, health, now=None, budget_s=420, known=None):
             for j in got:
                 j.update(company_tier=c["tier"], company_rank=c.get("rank", 99))
             out += got
-            health[c["name"]] = {"ok": True, "count": len(got), "at": now, "secs": round(time.time() - s, 1)}
+            health[c["name"]] = {"ok": True, "count": len(got), "at": now, "secs": round(time.time() - s, 1), "strikes": 0}
         except Exception as e:
-            health[c["name"]] = {"ok": False, "count": 0, "at": now, "error": str(e)[:200]}
+            h = {"ok": False, "count": 0, "at": now, "error": str(e)[:200]}
+            if getattr(getattr(e, "response", None), "status_code", None) in RETRY_STATUSES:
+                k = min(4, (health.get(c["name"]) or {}).get("strikes", 0) + 1)      # rest 6h, 12h, 24h, 24h
+                h.update(strikes=k, backoff_until=now + min(24, 6 * 2 ** (k - 1)) * 3600,
+                         error="site said 'too many requests' — resting, will retry later")
+            health[c["name"]] = h
     return out
+
+
+def api_url(c):
+    """The exact address each connector reads (used for the robots.txt check)."""
+    a = c.get("ats")
+    return {"amazon": "https://www.amazon.jobs/en/search.json",
+            "google": "https://www.google.com/about/careers/applications/jobs/results",
+            "eightfold": f"{c.get('base')}/api/pcsx/search",
+            "workday": f"https://{c.get('tenant')}.{c.get('wd')}.myworkdayjobs.com/wday/cxs/{c.get('tenant')}/{c.get('site')}/jobs",
+            "greenhouse": f"https://boards-api.greenhouse.io/v1/boards/{c.get('slug')}/jobs",
+            "lever": f"https://api.lever.co/v0/postings/{c.get('slug')}",
+            "ashby": f"https://api.ashbyhq.com/posting-api/job-board/{c.get('slug')}",
+            "smartrecruiters": f"https://api.smartrecruiters.com/v1/companies/{c.get('slug')}/postings",
+            "apple": "https://jobs.apple.com/en-in/search",
+            "orc": f"https://{c.get('host')}/hcmRestApi/resources/latest/recruitingCEJobRequisitions"}.get(a, "")

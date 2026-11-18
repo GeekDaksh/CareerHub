@@ -137,10 +137,12 @@ def robots_audit():
             if r.status_code >= 400:
                 out.append(f"{k}: robots {r.status_code} → allowed (RFC 9309)")
                 continue
-            rp = urllib.robotparser.RobotFileParser()
-            rp.parse(r.text.splitlines())
-            dis = [l.strip() for l in r.text.splitlines() if l.lower().startswith("disallow")][:4]
-            out.append(f"{k}: {'ALLOWED' if rp.can_fetch(UA, u) and rp.can_fetch('*', u) else 'DISALLOWED'} {dis}")
+            from careers import robots as RB
+            path = p.path or "/"
+            ok = RB.allowed(r.text, path, UA)
+            hits = [l.strip() for l in r.text.splitlines() if l.lower().startswith(("allow", "disallow"))
+                    and l.split(":", 1)[1].strip() and path.startswith(l.split(":", 1)[1].strip().split("*")[0])][:6]
+            out.append(f"{k}: {'ALLOWED' if ok else 'DISALLOWED'} (RFC 9309) matching lines {hits}")
         except Exception as e:
             out.append(f"{k}: robots unreachable {type(e).__name__}")
     return " ;; ".join(out)
@@ -176,7 +178,11 @@ def orc_shape():
 
 def main():
     if len(__import__("sys").argv) > 1 and __import__("sys").argv[1] == "2":
-        for name, fn in [("robots", robots_audit), ("apple shape", apple_shape), ("orc shape", orc_shape)]:
+        def sr_page():
+            html = S.get("https://careers.smartrecruiters.com/BoschGroup", as_json=False)
+            ids = set(re.findall(r"jobs\.smartrecruiters\.com/BoschGroup/(\d+)", html))
+            return f"page {len(html)} chars, {len(ids)} job links; markers {re.findall(r'(opening-job|job-title|__NEXT_DATA__|window\.__)', html)[:6]}"
+        for name, fn in [("robots", robots_audit), ("smartrecruiters careers page", sr_page)]:
             try:
                 print(f"::notice title={name}::{fn()}")
             except Exception as e:

@@ -15,7 +15,7 @@ from common import gates
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
 DIR = os.path.join(DATA_DIR, "careers")
-BUDGET = float(os.environ.get("CAREERS_BUDGET_SECONDS", "540"))
+BUDGET = float(os.environ.get("CAREERS_BUDGET_SECONDS", "840"))   # 14 min: requests are now paced (see sources.PACE)
 DESC_KEEP = 6000
 DESC_KEEP_NONTECH = 300
 
@@ -36,10 +36,24 @@ def save(path, obj):
     os.replace(tmp, path)
 
 
+WORKDAY_PER_RUN = int(os.environ.get("CAREERS_WORKDAY_PER_RUN", "6"))   # 4 runs/day x 6 = every Workday site ~daily
+
+
 def order(companies, health):
-    """Automatic companies, longest-since-refresh first (never refreshed = first), then by tier."""
+    """Automatic companies, longest-since-refresh first (never refreshed = first), then by tier. At most
+    WORKDAY_PER_RUN Workday sites per run (Workday blocks bursts of requests)."""
     auto = [c for c in companies if c.get("ats") in S.CONNECTORS]
-    return sorted(auto, key=lambda c: ((health.get(c["name"]) or {}).get("ok_at", 0), registry.TIER_RANK[c["tier"]]))
+    auto.sort(key=lambda c: ((health.get(c["name"]) or {}).get("ok_at", 0), registry.TIER_RANK.get(c["tier"], 9)))
+    out, wd = [], 0
+    for c in auto:
+        if c["ats"] == "workday":
+            if (health.get(c["name"]) or {}).get("backoff_until", 0) > time.time():
+                continue
+            wd += 1
+            if wd > WORKDAY_PER_RUN:
+                continue
+        out.append(c)
+    return out
 
 
 def enrich(j, company, now):
@@ -62,13 +76,15 @@ def run(now=None, budget=BUDGET, collect=S.collect):
     old = load(path, {})
     jobs = {j["id"]: j for j in old.get("jobs", [])}
     health = old.get("health", {})
-    companies = {c["name"]: c for c in registry.CANDIDATES}
+    companies_all = registry.CANDIDATES + custom_companies()
+    companies = {c["name"]: c for c in companies_all}
     known = {}
     for j in jobs.values():
         if len(j.get("desc") or "") > 200:
             known.setdefault(j["company"], set()).update({j["id"], j.get("src_key") or j["id"]})
-    run_health = {}
-    got = collect(order(registry.CANDIDATES, health), run_health, now, budget, known)
+    work = {n: dict(h) for n, h in health.items()}          # collect() reads rest periods / strikes from here
+    got = collect(order(companies_all, health), work, now, budget, known)
+    run_health = {n: h for n, h in work.items() if h.get("at") == now}      # companies visited this run
     for name, h in run_health.items():
         prev = health.get(name, {})
         health[name] = {**h, "ok_at": now if h.get("ok") else prev.get("ok_at", 0),
