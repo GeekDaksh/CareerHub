@@ -181,7 +181,8 @@ def main():
         def sr_page():
             html = S.get("https://careers.smartrecruiters.com/BoschGroup", as_json=False)
             ids = set(re.findall(r"jobs\.smartrecruiters\.com/BoschGroup/(\d+)", html))
-            return f"page {len(html)} chars, {len(ids)} job links; markers {re.findall(r'(opening-job|job-title|__NEXT_DATA__|window\.__)', html)[:6]}"
+            marks = re.findall(r"(opening-job|job-title|__NEXT_DATA__|window\.__)", html)[:6]
+            return f"page {len(html)} chars, {len(ids)} job links; markers {marks}"
         for name, fn in [("robots", robots_audit), ("smartrecruiters careers page", sr_page)]:
             try:
                 print(f"::notice title={name}::{fn()}")
