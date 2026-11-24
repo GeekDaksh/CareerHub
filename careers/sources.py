@@ -127,6 +127,15 @@ def in_reach(loc):
                                                  and re.search(r"remote", str(loc or ""), re.I)))
 
 
+def ok_loc(c, loc):
+    """Built-in companies: India / remote-open-to-India only. Boards found by web search: plain "Remote" is kept
+    too (marked unclear later); remote tied to another country is dropped (careers.boards.reach)."""
+    if c.get("discovered"):
+        from careers.boards import reach
+        return reach(loc) is not None
+    return in_reach(loc)
+
+
 def post_json(url, body, headers=None, timeout=30):
     """POST with the same whole-request time and size limits as get()."""
     start = time.time()
@@ -298,7 +307,7 @@ def greenhouse(c):
     return [_job(c["name"], j["id"], j.get("title"), j.get("absolute_url"), (j.get("location") or {}).get("name"),
                  j.get("updated_at"), html.unescape(j.get("content") or ""),
                  "", "greenhouse")
-            for j in d.get("jobs") or [] if in_reach((j.get("location") or {}).get("name"))]
+            for j in d.get("jobs") or [] if ok_loc(c, (j.get("location") or {}).get("name"))]
 
 
 def lever(c):
@@ -306,7 +315,7 @@ def lever(c):
     return [_job(c["name"], j["id"], j.get("text"), j.get("hostedUrl"),
                  "; ".join(filter(None, [(j.get("categories") or {}).get("location"), j.get("workplaceType")])),
                  j.get("createdAt"), j.get("descriptionPlain") or "", (j.get("categories") or {}).get("commitment") or "", "lever")
-            for j in d or [] if in_reach((j.get("categories") or {}).get("location"))]
+            for j in d or [] if ok_loc(c, "; ".join(filter(None, [(j.get("categories") or {}).get("location"), j.get("workplaceType")])))]
 
 
 def ashby(c):
@@ -315,7 +324,9 @@ def ashby(c):
     for j in d.get("jobs") or []:
         loc = "; ".join(filter(None, [j.get("location")] + [x.get("location") for x in j.get("secondaryLocations") or []
                                                             if isinstance(x, dict)]))
-        if in_reach(loc):
+        if j.get("isRemote") and "remote" not in loc.lower():
+            loc = (loc + "; Remote").strip("; ")
+        if ok_loc(c, loc):
             out.append(_job(c["name"], j["id"], j.get("title"), j.get("jobUrl"), loc, j.get("publishedAt"),
                             j.get("descriptionPlain") or "", j.get("employmentType") or "", "ashby"))
     return out

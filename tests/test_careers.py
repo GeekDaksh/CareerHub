@@ -13,6 +13,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "app"))
+os.environ["BOARD_SEARCHES_PER_RUN"] = "0"           # tests never search the web
 WORK = os.path.join(ROOT, "tests", ".work", "careers")
 shutil.rmtree(WORK, ignore_errors=True)
 os.makedirs(WORK, exist_ok=True)
@@ -287,6 +288,77 @@ import re as _re  # noqa: E402,F401
 order = R.order(registry.CANDIDATES, {"Apple": {"ok_at": now}, "Amazon": {"ok_at": now - 9999}})
 chk(order[0]["name"] not in ("Apple", "Amazon") and order.index(C["Amazon"]) < order.index(C["Apple"]),
     "companies refreshed longest ago go first (rotation)")
+
+# ---------------------------------------------------------------- job boards found by web search
+from careers import boards as BD  # noqa: E402
+chk(BD.board_of("https://jobs.lever.co/acme/0f1e2d?lever-source=x") == ("lever", "acme"), "Lever job link → board")
+chk(BD.board_of("https://jobs.ashbyhq.com/sarvam/123") == ("ashby", "sarvam"), "Ashby job link → board")
+chk(BD.board_of("https://job-boards.greenhouse.io/anthropic/jobs/1") == ("greenhouse", "anthropic"), "Greenhouse job link → board")
+for bad_url in ["https://jobs.lever.co.evil.com/acme/1", "https://evil.com/jobs.lever.co/acme", "http://jobs.lever.co/acme/1",
+                "https://boards.greenhouse.io/embed/job_app?for=x", "https://www.linkedin.com/jobs/view/1"]:
+    chk(BD.board_of(bad_url) is None, f"not a real job-board link → ignored: {bad_url[:42]}")
+qs = BD.queries({"daksh": ["Machine Learning Engineer", "Data Scientist"], "aruja": ["Civil Engineer"]})
+chk(qs[0][0] == "daksh" and any(o == "aruja" for o, _ in qs[:16]) and 'site:jobs.lever.co "Machine Learning Engineer" remote' in [q for _, q in qs],
+    "searches use each profile's own titles, interleaved fairly, in the site:… \"title\" remote form")
+chk(all('"' not in q.split('"')[1] for _, q in BD.queries({"x": ['ML" OR site:evil.com "x']})), "a title can't break out of its quotes")
+
+
+class FakeSearch:
+    def __init__(self, res):
+        self.res, self.n = res, 0
+
+    def search(self, q, n=10):
+        self.n += 1
+        return self.res.get(q, [])
+
+
+store = {}
+fs = FakeSearch({'site:jobs.lever.co "Civil Engineer" remote': [{"url": "https://jobs.lever.co/buildco/1"}, {"url": "https://evil.com/x"}],
+                 'site:jobs.lever.co "Machine Learning Engineer" remote': [{"url": "https://jobs.lever.co/mlco/9"}]})
+st = BD.discover({"daksh": ["Machine Learning Engineer"], "aruja": ["Civil Engineer"]}, store, fs, now, budget_s=60, per_run=16)
+chk(set(store["boards"]) == {"lever:buildco", "lever:mlco"} and store["boards"]["lever:buildco"]["owners"] == ["aruja"]
+    and store["boards"]["lever:mlco"]["owners"] == ["daksh"], "boards remembered with WHO found them")
+cs = BD.companies(store, {"lever:mlco"}, now)
+chk([c["slug"] for c in cs] == ["buildco"] and cs[0]["discovered"] and cs[0]["owners"] == ["aruja"], "already-known boards aren't read twice")
+store["boards"]["lever:buildco"]["last_hit"] = now - 40 * 86400
+BD.discover({"daksh": ["X"]}, store, FakeSearch({}), now, per_run=16)
+chk("lever:buildco" not in store["boards"], "a board no search has found for a month is forgotten")
+chk(BD.reach("Remote") == "remote-unclear" and BD.reach("Remote - US") is None and BD.reach("Remote, Canada") is None
+    and BD.reach("Remote (Worldwide)") == "remote-open" and BD.reach("Bengaluru, India") == "india" and BD.reach("New York") is None,
+    "remote: worldwide kept, plain 'Remote' kept-but-flagged, remote-US / Canada / office abroad dropped")
+gh = {"name": "BuildCo", "ats": "greenhouse", "slug": "buildco", "discovered": True}
+chk(S.ok_loc(gh, "Remote") and not S.ok_loc(gh, "Remote - USA") and not S.ok_loc({"ats": "greenhouse"}, "Remote"),
+    "plain 'Remote' only accepted for boards found by search (built-in companies keep the stricter rule)")
+
+# end to end: a board found by Aruja's search → its jobs are collected and tagged as hers only
+WORK_B = os.path.join(WORK, "boards_e2e")
+os.environ["DATA_DIR"] = WORK_B
+import importlib as _il  # noqa: E402
+from careers import run as RB  # noqa: E402
+_il.reload(RB)
+bstore = {"boards": {"lever:buildco": {"ats": "lever", "slug": "buildco", "owners": ["aruja"], "last_hit": now, "hits": 1}}}
+
+
+def fake_b(cs, h, n, b, known):
+    for c in cs:
+        h[c["name"]] = {"ok": True, "count": 1, "at": n, "secs": 0}
+    names = [c["name"] for c in cs]
+    jobs = [dict(jobs_for(range(6))[i]) for i in range(6)]
+    if "Buildco" in names:
+        jobs.append({"id": "off:buildco:1", "company": "Buildco", "company_tier": "Startup", "company_rank": 900,
+                     "title": "Junior Site Engineer", "url": "https://jobs.lever.co/buildco/1", "location": "Remote",
+                     "posted": n, "desc": "Requirements: B.Tech Civil. AutoCAD.", "kind_hint": "", "official": True, "ats": "lever"})
+    return jobs
+
+
+RB.run(now=now, collect=fake_b, board_search_fn=lambda n: (bstore, {"queries": 0}))
+docb = json.load(open(os.path.join(WORK_B, "careers", "official.json")))
+bj = [j for j in docb["jobs"] if j["company"] == "Buildco"]
+chk(bj and bj[0]["owners"] == ["aruja"] and bj[0]["reach"] == "remote-unclear" and bj[0]["visible"],
+    "a found board's jobs are collected, marked 'remote — check country', and tagged as Aruja's only")
+chk(json.load(open(os.path.join(WORK_B, "careers", "boards.json")))["boards"]["lever:buildco"].get("read_at") == now,
+    "the board's read time is remembered (so boards are read in rotation)")
+os.environ["DATA_DIR"] = WORK
 
 # ---------------------------------------------------------------- eligibility
 from careers import eligible as EL  # noqa: E402

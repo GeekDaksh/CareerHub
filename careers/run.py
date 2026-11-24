@@ -13,10 +13,12 @@ Gates (common/gates.py, kind "careers") run before saving; if they fail the last
 """
 import json
 import os
+import re
 import time
 
 import config as CFG
-from careers import classify as K, custom as CU, eligible as EL, legit, match as M, registry, sources as S
+from careers import boards as BD, classify as K, custom as CU, eligible as EL, legit, match as M, registry, sources as S
+from common import settings as SETTINGS
 from common import gates
 
 DATA_DIR = os.environ.get("DATA_DIR", "data")
@@ -68,6 +70,7 @@ def enrich(j, company, now):
     j["skills"] = M.job_skills(j)            # what the job asks for (server compares it with your resumes)
     j["hard"] = M.hard_requirements(j)
     j["eligible"] = EL.check(j, CFG.PROFILE.get("degree", "bachelor"), CFG.PROFILE.get("grad_year"))
+    j["reach"] = BD.reach(j.get("location")) or "india"
     j["legit"] = legit.official(j, company, j.get("last_seen"), now)
     j["visible"] = j["legit"]["pct"] >= 55
     if c["family"] == "Non-technical":
@@ -126,6 +129,34 @@ def custom_companies(old, now, board_size=_board_size):
     return out, {k: v for k, v in cache.items() if k in merged}
 
 
+def titles_by_owner():
+    """Each profile's own search titles: Daksh's radar roles (settings), others' profile roles + their field."""
+    out = {}
+    s = SETTINGS.load_from(load(os.path.join(DATA_DIR, "settings", "settings.json"), None))
+    order = [r for r in s["roles"] if r in CFG.ROLE_FOCUS] + [r for r in s["roles"] if r not in CFG.ROLE_FOCUS]
+    out["daksh"] = list(dict.fromkeys(CFG.ROLE_QUERY[r] for r in order if r in CFG.ROLE_QUERY))
+    for u in PROFILES[1:]:
+        prof = load(os.path.join(DATA_DIR, "users", u, "profile", "profile.json"), {})
+        field = re.sub(r"[^\w &/+.-]", "", str(prof.get("field") or ""))[:60].strip()
+        t = ([field] if field else []) + [CFG.ROLE_QUERY[r] for r in prof.get("roles") or [] if r in CFG.ROLE_QUERY]
+        if t:
+            out[u] = list(dict.fromkeys(t))
+    return out
+
+
+def board_search(now):
+    """Web-search job boards for every profile's titles (careers/boards.py). Returns (store, stats)."""
+    from common.search import Searcher
+    store = load(os.path.join(DIR, "boards.json"), {})
+    searcher = Searcher(os.path.join(DIR, "board_search_cache.json"))
+    try:
+        stats = BD.discover(titles_by_owner(), store, searcher, now)
+    except Exception as e:                      # search trouble never stops the collection
+        stats = {"error": str(e)[:150]}
+    searcher.save()
+    return store, stats
+
+
 def keep(j, company, health, now):
     """Is this job still worth showing? (see the rules in the module docstring)"""
     age = now - j.get("last_seen", 0)
@@ -139,7 +170,8 @@ def keep(j, company, health, now):
     return age <= 7 * 86400                            # search-based sites: it may just not match this run's words
 
 
-def run(now=None, budget=BUDGET, collect=S.collect):
+def run(now=None, budget=BUDGET, collect=S.collect, board_search_fn=None):
+    board_search_fn = board_search_fn or board_search
     now = now or time.time()
     path = os.path.join(DIR, "official.json")
     old = load(path, {})
@@ -148,15 +180,24 @@ def run(now=None, budget=BUDGET, collect=S.collect):
     mine, custom_cache = custom_companies(old, now)
     reg_names = {c["name"].lower() for c in registry.CANDIDATES}
     mine = [c for c in mine if c["name"].lower() not in reg_names]      # already built in
-    companies_all = registry.CANDIDATES + mine
+    store, bstats = board_search_fn(now)
+    known_boards = {f"{c['ats']}:{str(c.get('slug', '')).lower()}" for c in registry.CANDIDATES + mine if c.get("slug")}
+    found = BD.companies(store, known_boards, now, limit=10 ** 6)           # every remembered board (for keep rules)
+    found = [c for c in found if c["name"].lower() not in reg_names | {m["name"].lower() for m in mine}]
+    to_read = found[:BD.BOARDS_PER_RUN]                                   # this run's share, longest-unread first
+    companies_all = registry.CANDIDATES + mine + found
     companies = {c["name"]: c for c in companies_all}
     known = {}
     for j in jobs.values():
         if len(j.get("desc") or "") > 200:
             known.setdefault(j["company"], set()).update({j["id"], j.get("src_key") or j["id"]})
     work = {n: dict(h) for n, h in health.items()}          # collect() reads rest periods / strikes from here
-    got = collect(order(companies_all, health), work, now, budget, known)
+    got = collect(order(registry.CANDIDATES + mine, health) + to_read, work, now, budget, known)
     run_health = {n: h for n, h in work.items() if h.get("at") == now}      # companies visited this run
+    for c in to_read:                                                     # remember when each found board was read
+        if (run_health.get(c["name"]) or {}).get("ok"):
+            store["boards"][c["board_key"]]["read_at"] = now
+    save(os.path.join(DIR, "boards.json"), store)
     for name, h in run_health.items():
         prev = health.get(name, {})
         health[name] = {**h, "ok_at": now if h.get("ok") else prev.get("ok_at", 0),
@@ -204,6 +245,9 @@ def run(now=None, budget=BUDGET, collect=S.collect):
     vis = sum(1 for j in kept if j["visible"])
     ml = sum(1 for j in kept if j["visible"] and j.get("is_ml"))
     fresh = sum(1 for j in kept if j["visible"] and j.get("fresher_fit") in ("fits", "stretch"))
+    print(f"job boards via web search: {bstats}")
+    if os.environ.get("GITHUB_ACTIONS"):
+        print(f"::notice title=Job-board search::{bstats} · {len(to_read)} found boards read this run")
     print(f"careers: {len(got)} fetched this run ({new} new) from {sum(1 for h in run_health.values() if h.get('ok'))} "
           f"companies · {len(kept)} stored · {vis} shown · {ml} ML/AI · {fresh} fresher-fit"
           + (f" · {dropped} dropped (unsafe link)" if dropped else "")

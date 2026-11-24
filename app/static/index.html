@@ -784,6 +784,7 @@ function jobRow(j) {
         ${(j.specialties || []).filter((x) => x.toLowerCase() !== j.family.toLowerCase()).slice(0, 2).map((x) => `<span class="tag">${esc(x)}</span>`).join("")}
         <span class="tag">${esc(j.cities.slice(0, 2).join(", "))}${j.cities.length > 2 ? ` +${j.cities.length - 2}` : ""}</span>
         ${j.posted ? `<span class="tag">${esc(ago(j.posted))}</span>` : ""}
+        ${j.reach === "remote-unclear" ? `<span class="tag bC" title="The post says only 'Remote' — check it's open to people in India">Remote · check country</span>` : j.reach === "remote-open" ? `<span class="tag bA">Remote · open worldwide / APAC</span>` : ""}
         ${j.elig && !j.elig.ok ? `<span class="tag bD" title="You can't apply to this one">Not eligible: ${esc(j.elig.why)}</span>` : ""}</div></div>
     <div class="side">
       ${j.fy != null ? `<span class="pill ${pctCls(j.fy)}" title="${esc((j.fy_why || []).join(" · ") || "Learned from your likes and dislikes")}"><b>${j.fy}</b>for you</span>` : ""}
@@ -817,7 +818,7 @@ function careerBig() {
     const r = rows.filter((j) => j.company_tier === t);
     const lk = links.filter((l) => l.tier === t);
     const n = more[t] ? r.length : Math.min(r.length, 15);
-    return `<div class="tier"><h3>${esc(t)}</h3><span class="dim small">${r.length} roles · ${new Set(r.map((j) => j.company)).size} companies</span></div>
+    return `<div class="tier"><h3>${esc(t === "Startup" ? "Startups (your companies + job boards found by search)" : t)}</h3><span class="dim small">${r.length} roles · ${new Set(r.map((j) => j.company)).size} companies</span></div>
       ${r.length ? `<div class="jlist">${r.slice(0, n).map(jobRow).join("")}</div>` : '<p class="empty">Nothing here with these filters.</p>'}
       ${r.length > n ? `<p><button class="mini" data-act="bmore" data-t="${esc(t)}">Show all ${r.length}</button></p>` : ""}
       ${lk.length ? `<p class="small dim" style="margin-top:10px">Not read automatically (their site doesn't allow it) — search there: ${lk.map((l) => `<a class="mini" href="${safeUrl(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)} ↗</a>`).join(" ")}</p>` : ""}`;

@@ -314,7 +314,7 @@ GIG_FIELDS = ["id", "source", "title", "url", "company", "posted", "first_seen",
 
 CAREERS = {"jobs": {}, "doc": {}}          # full official jobs (with descriptions) for the Details view
 ROW_FIELDS = ["id", "company", "company_tier", "company_rank", "title", "location", "posted", "first_seen", "last_seen",
-              "url", "family", "family_conf", "specialties", "is_ml", "level", "level_conf", "fresher_fit", "employment",
+              "url", "reach", "family", "family_conf", "specialties", "is_ml", "level", "level_conf", "fresher_fit", "employment",
               "work_mode", "hard"]
 
 

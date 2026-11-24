@@ -176,7 +176,31 @@ def orc_shape():
     return "item: " + json.dumps({k: (str(v)[:60]) for k, v in s.items()})[:1400]
 
 
+def boards_trial():
+    """Real searches on GitHub's machine: do site:jobs.lever.co / ashby / greenhouse queries find boards?"""
+    import collections
+    from careers import boards as BD
+    from common.search import Searcher
+    store, out = {}, []
+    titles = {"daksh": ["Machine Learning Engineer", "AI Engineer"], "aruja": ["Civil Engineer"]}
+    st = BD.discover(titles, store, Searcher("/tmp/bsc.json"), budget_s=200, per_run=12)
+    out.append(f"stats {st}; boards {sorted(store.get('boards', {}))[:25]}")
+    cs = BD.companies(store, set(), limit=4)
+    health = {}
+    jobs = S.collect(cs, health, budget_s=120)
+    out.append("health " + str({k: (v.get('ok'), v.get('count'), v.get('error', '')[:50]) for k, v in health.items()}))
+    out.append("reach " + str(collections.Counter(BD.reach(j["location"]) for j in jobs)))
+    out.append("sample " + str([(j["company"], j["title"][:40], j["location"][:30]) for j in jobs[:8]]))
+    return " ;; ".join(out)
+
+
 def main():
+    if len(__import__("sys").argv) > 1 and __import__("sys").argv[1] == "3":
+        try:
+            print(f"::notice title=boards trial::{boards_trial()}")
+        except Exception as e:
+            print(f"::notice title=boards trial::FAIL {type(e).__name__} {str(e)[:300]}")
+        return
     if len(__import__("sys").argv) > 1 and __import__("sys").argv[1] == "2":
         def sr_page():
             html = S.get("https://careers.smartrecruiters.com/BoschGroup", as_json=False)
