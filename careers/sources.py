@@ -310,12 +310,17 @@ def greenhouse(c):
             for j in d.get("jobs") or [] if ok_loc(c, (j.get("location") or {}).get("name"))]
 
 
+def _lever_loc(j):
+    """'Bengaluru' + workplace 'remote' → 'Bengaluru; remote', without repeating 'Remote; remote'."""
+    loc, wp = str((j.get("categories") or {}).get("location") or ""), str(j.get("workplaceType") or "")
+    return loc if not wp or wp.lower() in loc.lower() or wp == "unspecified" else "; ".join(filter(None, [loc, wp]))
+
+
 def lever(c):
     d = cget(f"https://api.lever.co/v0/postings/{c['slug']}", params={"mode": "json"})
-    return [_job(c["name"], j["id"], j.get("text"), j.get("hostedUrl"),
-                 "; ".join(filter(None, [(j.get("categories") or {}).get("location"), j.get("workplaceType")])),
+    return [_job(c["name"], j["id"], j.get("text"), j.get("hostedUrl"), _lever_loc(j),
                  j.get("createdAt"), j.get("descriptionPlain") or "", (j.get("categories") or {}).get("commitment") or "", "lever")
-            for j in d or [] if ok_loc(c, "; ".join(filter(None, [(j.get("categories") or {}).get("location"), j.get("workplaceType")])))]
+            for j in d or [] if ok_loc(c, _lever_loc(j))]
 
 
 def ashby(c):

@@ -818,7 +818,7 @@ function careerBig() {
     const r = rows.filter((j) => j.company_tier === t);
     const lk = links.filter((l) => l.tier === t);
     const n = more[t] ? r.length : Math.min(r.length, 15);
-    return `<div class="tier"><h3>${esc(t === "Startup" ? "Startups (your companies + job boards found by search)" : t)}</h3><span class="dim small">${r.length} roles · ${new Set(r.map((j) => j.company)).size} companies</span></div>
+    return `<div class="tier"><h3>${esc(t === "Startup" ? "More companies — yours + found on job boards" : t)}</h3><span class="dim small">${r.length} roles · ${new Set(r.map((j) => j.company)).size} companies</span></div>
       ${r.length ? `<div class="jlist">${r.slice(0, n).map(jobRow).join("")}</div>` : '<p class="empty">Nothing here with these filters.</p>'}
       ${r.length > n ? `<p><button class="mini" data-act="bmore" data-t="${esc(t)}">Show all ${r.length}</button></p>` : ""}
       ${lk.length ? `<p class="small dim" style="margin-top:10px">Not read automatically (their site doesn't allow it) — search there: ${lk.map((l) => `<a class="mini" href="${safeUrl(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)} ↗</a>`).join(" ")}</p>` : ""}`;
